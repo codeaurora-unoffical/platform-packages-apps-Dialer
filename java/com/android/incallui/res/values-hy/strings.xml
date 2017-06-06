@@ -59,10 +59,6 @@
     <string name="notification_incoming_work_call_wifi" msgid="322580182203435905">"Մուտքային աշխատանքային Wi-Fi զանգ"</string>
     <string name="notification_incoming_spam_call" msgid="7591506944666791937">"Մուտքային զանգը հավանաբար լցոն է"</string>
     <string name="notification_requesting_video_call" msgid="1807679328811515758">"Մուտքային տեսազանգի հայցում"</string>
-    <string name="notification_voicemail_title" msgid="3870308666991926655">"Նոր ձայնային հաղորդագրություն"</string>
-    <string name="notification_voicemail_title_count" msgid="6918714157574015331">"Նոր ձայնային նամակ (<xliff:g id="COUNT">%d</xliff:g>)"</string>
-    <string name="notification_voicemail_text_format" msgid="6080732264937745523">"Զանգել <xliff:g id="VOICEMAIL_NUMBER">%s</xliff:g>"</string>
-    <string name="notification_voicemail_no_vm_number" msgid="260803154697293622">"Ձայնային փոստի համարն անհայտ է"</string>
     <string name="notification_network_selection_title" msgid="8639159088474275747">"Ծառայություններ չկան"</string>
     <string name="notification_network_selection_text" msgid="7190860774239009625">"Ընտրված ցանցը (<xliff:g id="OPERATOR_NAME">%s</xliff:g>) անհասանելի է"</string>
     <string name="notification_action_answer" msgid="8748275902211192568">"Պատասխանել"</string>
@@ -134,7 +130,7 @@
     <string name="spam_notification_dialog_add_contact_action_text" msgid="5619696845681999506">"Ավելացնել կոնտակտներում"</string>
     <string name="spam_notification_dialog_block_report_spam_action_text" msgid="1821506089128547428">"Արգելափակել և նշել որպես լցոն"</string>
     <string name="spam_notification_dialog_was_not_spam_action_text" msgid="4953789750391355251">"Լցոն չէ"</string>
-    <string name="callFailed_simError" msgid="4587775795711340072">"SIM- բացակայում է կամ SIM-ի սխալ"</string>
+    <string name="callFailed_simError" msgid="4587775795711340072">"SIM- բացակայում է կամ SIM քարտի սխալ"</string>
     <string name="conference_caller_disconnect_content_description" msgid="2821988368803183644">"Ավարտել զանգը"</string>
     <string name="conference_call_name" msgid="8189987124611337174">"Կոնֆերանս զանգ"</string>
     <string name="generic_conference_call_name" msgid="1546941472424243894">"Զանգ"</string>

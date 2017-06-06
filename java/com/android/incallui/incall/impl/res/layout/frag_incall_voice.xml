@@ -12,6 +12,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:fitsSystemWindows="true">
 
     <LinearLayout
@@ -69,12 +71,20 @@
       android:layout_centerHorizontal="true"/>
 
     <com.android.incallui.incall.impl.InCallPaginator
-        android:id="@+id/incall_paginator"
-        android:layout_height="@dimen/paginator_height"
-        android:layout_width="@dimen/paginator_width"
-        android:layout_above="@+id/incall_end_call"
-        android:layout_centerHorizontal="true"
-        android:visibility="gone"/>
+      android:id="@+id/incall_paginator"
+      android:layout_height="@dimen/paginator_height"
+      android:layout_width="@dimen/paginator_width"
+      android:layout_above="@+id/incall_end_call"
+      android:layout_centerHorizontal="true"
+      android:visibility="gone"/>
+    <!-- Volume boost and Volume enhancements in-call UI -->
+    <ImageButton android:id="@+id/volumeBoost"
+      android:layout_above="@+id/incall_tab_dots"
+      android:layout_width="80dp"
+      android:layout_height="80dp"
+      android:visibility="gone"
+      android:soundEffectsEnabled="false"
+      android:background="@drawable/vb_normal"/>
 
     <FrameLayout
       android:id="@+id/incall_dialpad_container"
@@ -82,6 +92,8 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_alignParentBottom="true"
+      android:clipChildren="false"
+      android:clipToPadding="false"
       tools:background="@android:color/white"
       tools:visibility="gone"/>
     <ImageButton
@@ -92,6 +104,18 @@
       android:layout_alignParentBottom="true"
       android:layout_centerHorizontal="true"
       android:contentDescription="@string/incall_content_description_end_call"/>
+    <ImageButton
+      android:id="@+id/incall_more_button"
+      style="@style/Incall.Button.VideoCall"
+      android:layout_height="wrap_content"
+      android:layout_width="wrap_content"
+      android:layout_marginTop="16dp"
+      android:layout_marginBottom="36dp"
+      android:layout_alignParentBottom="true"
+      android:src="@drawable/quantum_ic_more_vert_white_24"
+      android:layout_marginLeft = "16dp"
+      android:contentDescription="More Options"/>
+
   </RelativeLayout>
 
   <FrameLayout

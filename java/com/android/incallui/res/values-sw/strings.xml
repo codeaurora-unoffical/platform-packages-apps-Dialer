@@ -59,10 +59,6 @@
     <string name="notification_incoming_work_call_wifi" msgid="322580182203435905">"Simu ya Wi-Fi ya kazi inayoingia"</string>
     <string name="notification_incoming_spam_call" msgid="7591506944666791937">"Simu inayoingia inashukiwa kuwa taka"</string>
     <string name="notification_requesting_video_call" msgid="1807679328811515758">"Ombi  linaloingia la video"</string>
-    <string name="notification_voicemail_title" msgid="3870308666991926655">"Ujumbe mpya wa sauti"</string>
-    <string name="notification_voicemail_title_count" msgid="6918714157574015331">"Barua mpya ya sauti <xliff:g id="COUNT">%d</xliff:g>"</string>
-    <string name="notification_voicemail_text_format" msgid="6080732264937745523">"Piga <xliff:g id="VOICEMAIL_NUMBER">%s</xliff:g>"</string>
-    <string name="notification_voicemail_no_vm_number" msgid="260803154697293622">"Nambari ya ujumbe wa sauti haijulikani."</string>
     <string name="notification_network_selection_title" msgid="8639159088474275747">"Hakuna huduma"</string>
     <string name="notification_network_selection_text" msgid="7190860774239009625">"Mtandao uliochaguliwa <xliff:g id="OPERATOR_NAME">%s</xliff:g> haupatikani"</string>
     <string name="notification_action_answer" msgid="8748275902211192568">"Jibu"</string>
@@ -75,7 +71,7 @@
     <string name="notification_external_video_call" msgid="7709394856028436683">"Una simu ya video inayoendelea kwenye kifaa kingine"</string>
     <string name="notification_take_call" msgid="5631659438864492229">"Pokea Simu"</string>
     <string name="notification_take_video_call" msgid="4473387503712341390">"Pokea Simu ya Video"</string>
-    <string name="incall_error_power_off" msgid="3244691852792529453">"Kupiga simu, kwanza zima hali ya ndege."</string>
+    <string name="incall_error_power_off" msgid="3244691852792529453">"Kupiga simu, kwanza zima hali ya ndegeni."</string>
     <string name="incall_error_emergency_only" msgid="8313690034696753566">"Haijasajiliwa kwa mitandao"</string>
     <string name="incall_error_out_of_service" msgid="539611768312332950">"Mitandao ya simu za mkononi haipatikani"</string>
     <string name="incall_error_no_phone_number_supplied" msgid="293343960362630925">"Ili upige simu, weka nambari sahihi."</string>
@@ -92,7 +88,7 @@
     <string name="emergency_enable_radio_dialog_message" msgid="6927454354381787268">"Inawasha redio..."</string>
     <string name="emergency_enable_radio_dialog_retry" msgid="8760220613410560290">"Hakuna huduma. Inajaribu tena..."</string>
     <string name="dial_emergency_error" msgid="6953255422990366011">"Haiwezi kupiga simu. <xliff:g id="NON_EMERGENCY_NUMBER">%s</xliff:g> si nambari ya dharura."</string>
-    <string name="dial_emergency_empty_error" msgid="6668006522178181198">"Haiwezi kupiga simu. Piga simu nambari ya dharura."</string>
+    <string name="dial_emergency_empty_error" msgid="6668006522178181198">"Haiwezi kupiga simu. Piga nambari ya dharura."</string>
     <string name="dialerKeyboardHintText" msgid="6275105254377292585">"Tumia kibodi kubonyeza"</string>
     <string name="player_started" msgid="9177182657338033086">"Kichezaji Kimeanzishwa"</string>
     <string name="player_stopped" msgid="5040965200339765956">"Kichezaji Kimekomeshwa"</string>

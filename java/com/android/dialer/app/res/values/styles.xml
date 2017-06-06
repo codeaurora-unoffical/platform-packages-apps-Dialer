@@ -142,6 +142,8 @@
     <item name="contentInsetEnd">0dp</item>
   </style>
 
+  <style name="DialtactsSearchBarThemeOverlay" parent="ThemeOverlay.AppCompat.Light"/>
+
   <!-- Text in the action bar at the top of the screen -->
   <style name="DialtactsActionBarTitleText"
     parent="@android:style/TextAppearance.Material.Widget.ActionBar.Title">
@@ -259,5 +261,12 @@
     <item name="android:layout_width">match_parent</item>
     <item name="android:layout_height">1dp</item>
     <item name="android:background">?android:attr/listDivider</item>
+  </style>
+
+  <style name="CallLogSpinnerStyle">
+    <item name="android:textSize">@dimen/call_log_spinner_text_size</item>
+    <item name="android:gravity">center_vertical</item>
+    <item name="android:ellipsize">marquee</item>
+    <item name="android:singleLine">true</item>
   </style>
 </resources>

@@ -24,15 +24,16 @@ import android.telecom.CallAudioState;
 import com.android.contacts.common.compat.CallCompat;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
+import com.android.dialer.logging.DialerImpression;
 import com.android.dialer.logging.Logger;
-import com.android.dialer.logging.nano.DialerImpression;
-import com.android.incallui.AudioModeProvider.AudioModeListener;
 import com.android.incallui.InCallCameraManager.Listener;
 import com.android.incallui.InCallPresenter.CanAddCallListener;
 import com.android.incallui.InCallPresenter.InCallDetailsListener;
 import com.android.incallui.InCallPresenter.InCallState;
 import com.android.incallui.InCallPresenter.InCallStateListener;
 import com.android.incallui.InCallPresenter.IncomingCallListener;
+import com.android.incallui.audiomode.AudioModeProvider;
+import com.android.incallui.audiomode.AudioModeProvider.AudioModeListener;
 import com.android.incallui.call.CallList;
 import com.android.incallui.call.DialerCall;
 import com.android.incallui.call.DialerCall.CameraDirection;
@@ -270,6 +271,11 @@ public class CallButtonPresenter
   @Override
   public void changeToVideoClicked() {
     LogUtil.enterBlock("CallButtonPresenter.changeToVideoClicked");
+    Logger.get(mContext)
+        .logCallImpression(
+            DialerImpression.Type.VIDEO_CALL_UPGRADE_REQUESTED,
+            mCall.getUniqueCallId(),
+            mCall.getTimeAddedMs());
     mCall.getVideoTech().upgradeToVideo();
   }
 
@@ -386,12 +392,14 @@ public class CallButtonPresenter
     final boolean showSwap = call.can(android.telecom.Call.Details.CAPABILITY_SWAP_CONFERENCE);
     final boolean showHold =
         !showSwap
+            && !call.hasSentVideoUpgradeRequest()
             && call.can(android.telecom.Call.Details.CAPABILITY_SUPPORT_HOLD)
             && call.can(android.telecom.Call.Details.CAPABILITY_HOLD);
     final boolean isCallOnHold = call.getState() == DialerCall.State.ONHOLD;
 
     final boolean showAddCall =
-        TelecomAdapter.getInstance().canAddCall() && UserManagerCompat.isUserUnlocked(mContext);
+        TelecomAdapter.getInstance().canAddCall() && UserManagerCompat.isUserUnlocked(mContext)
+            && !call.hasSentVideoUpgradeRequest();
     final boolean showMerge = call.can(android.telecom.Call.Details.CAPABILITY_MERGE_CONFERENCE);
     final boolean showUpgradeToVideo = !isVideo && (hasVideoCallCapabilities(call));
     final boolean showDowngradeToAudio = isVideo && isDowngradeToAudioSupported(call);
@@ -410,7 +418,7 @@ public class CallButtonPresenter
     mInCallButtonUi.showButton(InCallButtonIds.BUTTON_HOLD, showHold);
     mInCallButtonUi.setHold(isCallOnHold);
     mInCallButtonUi.showButton(InCallButtonIds.BUTTON_MUTE, showMute);
-    mInCallButtonUi.showButton(InCallButtonIds.BUTTON_ADD_CALL, true);
+    mInCallButtonUi.showButton(InCallButtonIds.BUTTON_ADD_CALL, showAddCall);
     mInCallButtonUi.enableButton(InCallButtonIds.BUTTON_ADD_CALL, showAddCall);
     mInCallButtonUi.showButton(InCallButtonIds.BUTTON_UPGRADE_TO_VIDEO, showUpgradeToVideo);
     mInCallButtonUi.showButton(InCallButtonIds.BUTTON_DOWNGRADE_TO_AUDIO, showDowngradeToAudio);
@@ -424,6 +432,9 @@ public class CallButtonPresenter
     mInCallButtonUi.showButton(InCallButtonIds.BUTTON_MERGE, showMerge);
 
     mInCallButtonUi.updateButtonStates();
+    if (BottomSheetHelper.getInstance().shallShowMoreButton(getActivity())) {
+      BottomSheetHelper.getInstance().updateMap();
+    }
   }
 
   private boolean hasVideoCallCapabilities(DialerCall call) {
