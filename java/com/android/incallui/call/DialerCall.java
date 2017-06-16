@@ -85,6 +85,12 @@ public class DialerCall implements VideoTechListener {
   public static final int CALL_HISTORY_STATUS_PRESENT = 1;
   public static final int CALL_HISTORY_STATUS_NOT_PRESENT = 2;
 
+  /**
+  * NOTE: Capability constant definition has been duplicated to avoid bundling the
+  * Dialer with Frameworks. DON"T chage it without changing the framework value.
+  */
+  public static final int CAPABILITY_ADD_PARTICIPANT = 0x01000000;
+
   // Hard coded property for {@code Call}. Upstreamed change from Motorola.
   // TODO(b/35359461): Move it to Telecom in framework.
   public static final int PROPERTY_CODEC_KNOWN = 0x04000000;
@@ -652,6 +658,10 @@ public class DialerCall implements VideoTechListener {
     }
   }
 
+  public int getActualState() {
+      return mState;
+  }
+
   public void setState(int state) {
     mState = state;
     if (mState == State.INCOMING) {
@@ -773,7 +783,7 @@ public class DialerCall implements VideoTechListener {
 
   /** @return The {@link VideoCall} instance associated with the {@link Call}. */
   public VideoCall getVideoCall() {
-    return mTelecomCall == null ? null : mTelecomCall.getVideoCall();
+    return getVideoTech().getVideoCall();
   }
 
   public List<String> getChildCallIds() {
