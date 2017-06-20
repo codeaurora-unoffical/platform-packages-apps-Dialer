@@ -433,10 +433,34 @@ public class CallCardPresenter
   }
 
   private String getPrimaryInfoLocation(ContactCacheEntry contactInfo) {
-    if (contactInfo != null) {
+    if (contactInfo != null && contactInfo.location != null) {
       return contactInfo.location;
     }
     return "";
+  }
+
+  /**
+   * Returns the label with location for Active Call except conference call and
+   * calling from the saved contact.
+   */
+  private String getLabelWithLocation() {
+    String label = getConnectionLabel();
+    if (mPrimaryContactInfo != null) {
+      String name = getNameForCall(mPrimaryContactInfo);
+      String primaryLocation = getPrimaryInfoLocation(mPrimaryContactInfo);
+      boolean nameIsNumber = name != null && !name.equals(mPrimaryContactInfo.number);
+      boolean isConferenceCall = mPrimary != null && mPrimary.isConferenceCall();
+      boolean isEmergencyCall =  mPrimary != null && mPrimary.isEmergencyCall();
+      if (!(nameIsNumber || isConferenceCall) && isPrimaryCallActive()) {
+        label += "  ";
+        if (isEmergencyCall) {
+          label += mPrimary.getNumber();
+        } else {
+          label += primaryLocation;
+        }
+      }
+    }
+    return label;
   }
 
   private void updatePrimaryCallState() {
@@ -453,8 +477,10 @@ public class CallCardPresenter
               && MotorolaUtils.shouldBlinkHdIconWhenConnectingCall(mContext);
 
       boolean isBusiness = mPrimaryContactInfo != null && mPrimaryContactInfo.isBusiness;
+      boolean isConfCall = (mPrimary.isConferenceCall() || mPrimary.isIncomingConfCall())
+          && !mPrimary.hasProperty(Details.PROPERTY_GENERIC_CONFERENCE);
 
-      String primaryLocation = getPrimaryInfoLocation(mPrimaryContactInfo);
+      String label = getLabelWithLocation();
 
       // Check for video state change and update the visibility of the contact photo.  The contact
       // photo is hidden when the incoming video surface is shown.
@@ -468,15 +494,13 @@ public class CallCardPresenter
                   mPrimary.isVideoCall(),
                   mPrimary.getVideoTech().getSessionModificationState(),
                   mPrimary.getDisconnectCause(),
-                  (getConnectionLabel() + "  " + (isPrimaryCallActive() ?
-                      (isOutgoingEmergencyCall(mPrimary) ?
-                      mPrimary.getNumber() : primaryLocation) : "")),
+                  label,
                   getCallStateIcon(),
                   getGatewayNumber(),
                   shouldShowCallSubject(mPrimary) ? mPrimary.getCallSubject() : null,
                   mPrimary.getCallbackNumber(),
                   mPrimary.hasProperty(Details.PROPERTY_WIFI),
-                  mPrimary.isConferenceCall(),
+                  isConfCall,
                   isWorkCall,
                   isAttemptingHdAudioCall,
                   isHdAudioCall,
@@ -710,7 +734,7 @@ public class CallCardPresenter
               false /* nameIsNumber */,
               null /* location */,
               null /* label */,
-              getConferencePhoto(mPrimary),
+              null /* photo */,
               ContactPhotoType.DEFAULT_PLACEHOLDER,
               false /* isSipCall */,
               showContactPhoto,
@@ -1052,16 +1076,6 @@ public class CallCardPresenter
     final int resId =
         isGenericConference ? R.string.generic_conference_call_name : R.string.conference_call_name;
     return mContext.getResources().getString(resId);
-  }
-
-  private Drawable getConferencePhoto(DialerCall call) {
-    boolean isGenericConference = call.hasProperty(Details.PROPERTY_GENERIC_CONFERENCE);
-    LogUtil.v("CallCardPresenter.getConferencePhoto", "" + isGenericConference);
-
-    final int resId = isGenericConference ? R.drawable.img_phone : R.drawable.img_conference;
-    Drawable photo = mContext.getResources().getDrawable(resId);
-    photo.setAutoMirrored(true);
-    return photo;
   }
 
   private boolean shouldShowEndCallButton(DialerCall primary, int callState) {

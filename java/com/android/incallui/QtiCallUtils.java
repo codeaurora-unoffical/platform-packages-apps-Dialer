@@ -29,10 +29,24 @@
 
 package com.android.incallui;
 
+import android.content.Context;
+import android.content.Intent;
+
+import android.content.pm.ActivityInfo;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.telephony.TelephonyManager;
+import android.provider.Settings;
+
+import com.android.dialer.common.LogUtil;
+
 import java.lang.reflect.*;
+
+import org.codeaurora.ims.QtiCallConstants;
 import org.codeaurora.internal.IExtTelephony;
+import org.codeaurora.ims.utils.QtiImsExtUtils;
+
+import com.android.ims.ImsManager;
 
 /**
  * This class contains Qti specific utiltity functions.
@@ -98,5 +112,109 @@ public class QtiCallUtils {
             Log.e(LOG_TAG, "Exception : " + ex);
         }
         return isEmergencyNumber;
+    }
+
+    /**
+    * if true, conference dialer  is enabled.
+    */
+    public static boolean isConferenceUriDialerEnabled(Context context) {
+        boolean isEnhanced4gLteModeSettingEnabled = false;
+        TelephonyManager telephonyManager =
+                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            for (int i = 0; i < telephonyManager.getPhoneCount(); i++) {
+                isEnhanced4gLteModeSettingEnabled |= ImsManager.getInstance(context, i)
+                        .isEnhanced4gLteModeSettingEnabledByUserForSlot();
+            }
+        return isEnhanced4gLteModeSettingEnabled && ImsManager.isVolteEnabledByPlatform(context);
+    }
+
+    /**
+    * if true, conference dialer is enabled.
+    */
+    public static boolean isConferenceDialerEnabled(Context context) {
+        boolean isEnhanced4gLteModeSettingEnabled = false;
+        TelephonyManager telephonyManager =
+                (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            for (int i = 0; i < telephonyManager.getPhoneCount(); i++) {
+                if (QtiImsExtUtils.isCarrierConfigEnabled(i, context,
+                        "config_enable_conference_dialer")) {
+                    isEnhanced4gLteModeSettingEnabled |= ImsManager.getInstance(context, i)
+                            .isEnhanced4gLteModeSettingEnabledByUserForSlot();
+                }
+            }
+        return isEnhanced4gLteModeSettingEnabled && ImsManager.isVolteEnabledByPlatform(context);
+    }
+
+    /**
+    * get intent to start conference dialer
+    * with this intent, we can originate an conference call
+    */
+    public static Intent getConferenceDialerIntent() {
+        Intent intent = new Intent("org.codeaurora.confuridialer.ACTION_LAUNCH_CONF_URI_DIALER");
+        return intent;
+    }
+
+    /**
+    * get intent to start conference dialer
+    * with this intent, we can originate an conference call
+    */
+    public static Intent getConferenceDialerIntent(String number) {
+        Intent intent = new Intent("org.codeaurora.confdialer.ACTION_LAUNCH_CONF_DIALER");
+        intent.putExtra("confernece_number_key", number);
+        return intent;
+    }
+
+    /**
+    * get intent to start conference dialer
+    * with this intent, we can add participants to an existing conference call
+    */
+    public static Intent getAddParticipantsIntent() {
+        Intent intent = new Intent("org.codeaurora.confuridialer.ACTION_LAUNCH_CONF_URI_DIALER");
+        intent.putExtra("add_participant", true);
+        return intent;
+    }
+
+     /**
+     * used to get intent to start conference dialer
+     * with this intent, we can add participants to an existing conference call
+     */
+    public static Intent getAddParticipantsIntent(String number) {
+        Intent intent = new Intent("org.codeaurora.confdialer.ACTION_LAUNCH_CONF_DIALER");
+        intent.putExtra("add_participant", true);
+        intent.putExtra("current_participant_list", number);
+        return intent;
+    }
+
+    /**
+     * Checks the Settings to conclude on the call deflect support.
+     * Returns true if call deflect is possible, false otherwise.
+     */
+    public static boolean isCallDeflectSupported(Context context) {
+        int value = 0;
+        try{
+            value = android.provider.Settings.Global.getInt(
+                    context.getContentResolver(),
+                    QtiImsExtUtils.QTI_IMS_DEFLECT_ENABLED);
+        } catch(Settings.SettingNotFoundException e) {
+            //do Nothing
+            LogUtil.e("QtiCallUtils.isCallDeflectSupported", "" + e);
+        }
+        return (value == 1);
+    }
+
+    /** This method converts the QtiCallConstants' Orientation modes to the ActivityInfo
+     * screen orientation.
+     */
+    public static int toScreenOrientation(int orientationMode) {
+        switch(orientationMode) {
+            case QtiCallConstants.ORIENTATION_MODE_LANDSCAPE:
+                return ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+            case QtiCallConstants.ORIENTATION_MODE_PORTRAIT:
+                return ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
+            case QtiCallConstants.ORIENTATION_MODE_DYNAMIC:
+                return ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR;
+            default:
+                return ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
+        }
     }
 }

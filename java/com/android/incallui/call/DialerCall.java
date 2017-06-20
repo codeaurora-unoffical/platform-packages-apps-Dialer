@@ -77,6 +77,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import org.codeaurora.ims.utils.QtiImsExtUtils;
 
 /** Describes a single call and its state. */
 public class DialerCall implements VideoTechListener {
@@ -84,6 +85,12 @@ public class DialerCall implements VideoTechListener {
   public static final int CALL_HISTORY_STATUS_UNKNOWN = 0;
   public static final int CALL_HISTORY_STATUS_PRESENT = 1;
   public static final int CALL_HISTORY_STATUS_NOT_PRESENT = 2;
+
+  /**
+  * NOTE: Capability constant definition has been duplicated to avoid bundling the
+  * Dialer with Frameworks. DON"T chage it without changing the framework value.
+  */
+  public static final int CAPABILITY_ADD_PARTICIPANT = 0x01000000;
 
   // Hard coded property for {@code Call}. Upstreamed change from Motorola.
   // TODO(b/35359461): Move it to Telecom in framework.
@@ -239,6 +246,9 @@ public class DialerCall implements VideoTechListener {
               // now update the UI to possibly re-enable the Merge button based on the number of
               // currently conferenceable calls available or Connection Capabilities.
             case android.telecom.Connection.EVENT_CALL_MERGE_FAILED:
+              update();
+              break;
+            case TelephonyManagerCompat.EVENT_PHONE_ACCOUNT_CHANGED:
               update();
               break;
             case TelephonyManagerCompat.EVENT_HANDOVER_VIDEO_FROM_WIFI_TO_LTE:
@@ -649,6 +659,10 @@ public class DialerCall implements VideoTechListener {
     }
   }
 
+  public int getActualState() {
+      return mState;
+  }
+
   public void setState(int state) {
     mState = state;
     if (mState == State.INCOMING) {
@@ -770,7 +784,7 @@ public class DialerCall implements VideoTechListener {
 
   /** @return The {@link VideoCall} instance associated with the {@link Call}. */
   public VideoCall getVideoCall() {
-    return mTelecomCall == null ? null : mTelecomCall.getVideoCall();
+    return getVideoTech().getVideoCall();
   }
 
   public List<String> getChildCallIds() {
@@ -894,6 +908,18 @@ public class DialerCall implements VideoTechListener {
 
   public String toSimpleString() {
     return super.toString();
+  }
+
+  public boolean isIncomingConfCall() {
+    int callState = getState();
+    if (callState == State.INCOMING || callState == State.CALL_WAITING) {
+      Bundle extras = getExtras();
+      boolean incomingConf = (extras == null)? false :
+          extras.getBoolean(QtiImsExtUtils.QTI_IMS_INCOMING_CONF_EXTRA_KEY, false);
+      LogUtil.i("DialerCall", "isIncomingConfCall = " + incomingConf);
+      return incomingConf;
+    }
+    return false;
   }
 
   @CallHistoryStatus
@@ -1037,32 +1063,28 @@ public class DialerCall implements VideoTechListener {
 
   /** Return the string label to represent the call provider */
   public String getCallProviderLabel() {
+    PhoneAccount account = getPhoneAccount();
+    if (account != null && !TextUtils.isEmpty(account.getLabel())) {
+      List<PhoneAccountHandle> accounts =
+          mContext.getSystemService(TelecomManager.class).getCallCapablePhoneAccounts();
+      if (accounts != null && accounts.size() > 1) {
+        callProviderLabel = account.getLabel().toString();
+      }
+    }
     if (callProviderLabel == null) {
-      PhoneAccount account = getPhoneAccount();
-      if (account != null && !TextUtils.isEmpty(account.getLabel())) {
-        List<PhoneAccountHandle> accounts =
-            mContext.getSystemService(TelecomManager.class).getCallCapablePhoneAccounts();
-        if (accounts != null && accounts.size() > 1) {
-          callProviderLabel = account.getLabel().toString();
-        }
-      }
-      if (callProviderLabel == null) {
-        callProviderLabel = "";
-      }
+      callProviderLabel = "";
     }
     return callProviderLabel;
   }
 
   /** Return the Drawable Icon to represent the call provider */
   public Drawable getCallProviderIcon() {
-    if (callProviderIcon == null) {
-      PhoneAccount account = getPhoneAccount();
-      if (account != null && account.getIcon() != null) {
-        List<PhoneAccountHandle> accounts =
-            mContext.getSystemService(TelecomManager.class).getCallCapablePhoneAccounts();
-        if (accounts != null && accounts.size() > 1) {
-          callProviderIcon = account.getIcon().loadDrawable(mContext);
-        }
+    PhoneAccount account = getPhoneAccount();
+    if (account != null && account.getIcon() != null) {
+      List<PhoneAccountHandle> accounts =
+          mContext.getSystemService(TelecomManager.class).getCallCapablePhoneAccounts();
+      if (accounts != null && accounts.size() > 1) {
+        callProviderIcon = account.getIcon().loadDrawable(mContext);
       }
     }
     return callProviderIcon;
