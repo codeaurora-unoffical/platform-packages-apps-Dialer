@@ -35,10 +35,13 @@ import android.content.pm.ActivityInfo;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.provider.Settings;
+import android.telecom.Connection.VideoProvider;
 import android.telecom.VideoProfile;
 import android.telephony.TelephonyManager;
+import android.widget.Toast;
 
 import com.android.dialer.common.LogUtil;
+import com.android.dialer.util.PermissionsUtil;
 
 import java.lang.reflect.*;
 
@@ -55,17 +58,20 @@ import com.android.incallui.call.DialerCall;
 public class QtiCallUtils {
 
     private static String LOG_TAG = "QtiCallUtils";
+    private static IExtTelephony sIExtTelephony = null;
 
     /**
      * Returns IExtTelephony handle
      */
     public static IExtTelephony getIExtTelephony() {
-        IExtTelephony mExtTelephony = null;
+        if (sIExtTelephony != null) {
+            return sIExtTelephony;
+        }
         try {
             Class c = Class.forName("android.os.ServiceManager");
             Method m = c.getMethod("getService",new Class[]{String.class});
 
-            mExtTelephony =
+            sIExtTelephony =
                 IExtTelephony.Stub.asInterface((IBinder)m.invoke(null, "extphone"));
         } catch (ClassNotFoundException e) {
             Log.e(LOG_TAG, " ex: " + e);
@@ -80,7 +86,7 @@ public class QtiCallUtils {
         } catch (NoSuchMethodException e) {
             Log.e(LOG_TAG, " ex: " + e);
         }
-        return mExtTelephony;
+        return sIExtTelephony;
     }
 
     /**
@@ -119,13 +125,16 @@ public class QtiCallUtils {
     * if true, conference dialer  is enabled.
     */
     public static boolean isConferenceUriDialerEnabled(Context context) {
+        if (!PermissionsUtil.hasPhonePermissions(context)) {
+            return false;
+        }
         boolean isEnhanced4gLteModeSettingEnabled = false;
         TelephonyManager telephonyManager =
                 (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-            for (int i = 0; i < telephonyManager.getPhoneCount(); i++) {
-                isEnhanced4gLteModeSettingEnabled |= ImsManager.getInstance(context, i)
-                        .isEnhanced4gLteModeSettingEnabledByUserForSlot();
-            }
+        for (int i = 0; i < telephonyManager.getPhoneCount(); i++) {
+            isEnhanced4gLteModeSettingEnabled |= ImsManager.getInstance(context, i)
+                    .isEnhanced4gLteModeSettingEnabledByUserForSlot();
+        }
         return isEnhanced4gLteModeSettingEnabled && ImsManager.isVolteEnabledByPlatform(context);
     }
 
@@ -133,16 +142,19 @@ public class QtiCallUtils {
     * if true, conference dialer is enabled.
     */
     public static boolean isConferenceDialerEnabled(Context context) {
+        if (!PermissionsUtil.hasPhonePermissions(context)) {
+            return false;
+        }
         boolean isEnhanced4gLteModeSettingEnabled = false;
         TelephonyManager telephonyManager =
                 (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-            for (int i = 0; i < telephonyManager.getPhoneCount(); i++) {
-                if (QtiImsExtUtils.isCarrierConfigEnabled(i, context,
-                        "config_enable_conference_dialer")) {
-                    isEnhanced4gLteModeSettingEnabled |= ImsManager.getInstance(context, i)
-                            .isEnhanced4gLteModeSettingEnabledByUserForSlot();
-                }
+        for (int i = 0; i < telephonyManager.getPhoneCount(); i++) {
+            if (QtiImsExtUtils.isCarrierConfigEnabled(i, context,
+                    "config_enable_conference_dialer")) {
+                isEnhanced4gLteModeSettingEnabled |= ImsManager.getInstance(context, i)
+                        .isEnhanced4gLteModeSettingEnabledByUserForSlot();
             }
+        }
         return isEnhanced4gLteModeSettingEnabled && ImsManager.isVolteEnabledByPlatform(context);
     }
 
@@ -289,11 +301,43 @@ public class QtiCallUtils {
                 && call.can(android.telecom.Call.Details.CAPABILITY_SUPPORTS_VT_REMOTE_TX);
     }
 
-     /**
-      * Returns true if both voice and video capabilities (see above) are set
-      */
-     public static boolean hasVoiceOrVideoCapabilities(DialerCall call) {
-         return hasVoiceCapabilities(call) || hasTransmitVideoCapabilities(call)
-                 || hasReceiveVideoCapabilities(call);
-     }
+    /**
+     * Returns true if both voice and video capabilities (see above) are set
+     */
+    public static boolean hasVoiceOrVideoCapabilities(DialerCall call) {
+        return hasVoiceCapabilities(call) || hasTransmitVideoCapabilities(call)
+                || hasReceiveVideoCapabilities(call);
+    }
+
+    /**
+     * Displays the string corresponding to the resourceId as a Toast on the UI
+     */
+    public static void displayToast(Context context, int resourceId) {
+      displayToast(context, context.getResources().getString(resourceId));
+    }
+
+    /**
+     * Displays the message as a Toast on the UI
+     */
+    public static void displayToast(Context context, String msg) {
+      Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Returns the call session resource id given the call session event
+     */
+    public static int getCallSessionEventResId(int event) {
+        switch (event) {
+            case VideoProvider.SESSION_EVENT_RX_PAUSE:
+                return R.string.player_stopped;
+            case VideoProvider.SESSION_EVENT_RX_RESUME:
+                return R.string.player_started;
+            case VideoProvider.SESSION_EVENT_CAMERA_FAILURE:
+                return R.string.camera_not_ready;
+            case VideoProvider.SESSION_EVENT_CAMERA_READY:
+                return R.string.camera_ready;
+            default:
+                return R.string.unknown_call_session_event;
+        }
+    }
 }
