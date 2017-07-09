@@ -1093,9 +1093,7 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
 
             boolean hidePreview = shallHidePreview(isConf, videoState);
             Log.v(this, "showVideoUi, hidePreview = " + hidePreview);
-            if (hidePreview) {
-                ui.showOutgoingVideoView(!hidePreview);
-            }
+            ui.showOutgoingVideoView(!hidePreview);
 
             if (showOutgoingVideo) {
                 if ((SystemProperties.getInt(PROP_DISABLE_VIDEOCALL_PIP_MODE, 0) == 1)) {
@@ -1844,11 +1842,13 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
     }
 
     /**
-     * Hide preview window if it is a VT conference call
+     * Hide preview window if it is a VT conference call or Video Rx only
      */
     private boolean shallHidePreview(boolean isConf, int videoState) {
-        return VideoProfile.isBidirectional(videoState) && isConf
-                && QtiImsExtUtils.shallHidePreviewInVtConference(mContext);
+        return (VideoProfile.isBidirectional(videoState) && isConf
+                && QtiImsExtUtils.shallHidePreviewInVtConference(mContext))
+            || (VideoProfile.isReceptionEnabled(videoState)
+                && !VideoProfile.isBidirectional(videoState));
     }
 
     private boolean isConfCall() {

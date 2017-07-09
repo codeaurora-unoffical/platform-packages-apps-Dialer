@@ -624,4 +624,22 @@ public class QtiCallUtils {
         return context.getResources().getBoolean(
                 R.bool.config_ims_call_deflect_static_number_enable);
     }
+
+    //Treat outgoing receive-only video calls as Color
+    //Ring Back Tone video calls
+    public static boolean isVideoCrbtVoLteCall(Call call) {
+        return (call != null && call.getState() == Call.State.DIALING
+                && VideoProfile.isReceptionEnabled(call.getVideoState()));
+    }
+
+    public static boolean isVideoCrbtVtCall(Context context, Call call) {
+        if (context == null) {
+            Log.w(context, "Context is null...");
+        }
+        boolean videoCrbtConfig = QtiImsExtUtils.
+            isCarrierConfigEnabled(context, "config_enable_video_crbt");
+        return (call != null && call.getState() == Call.State.DIALING
+                && VideoProfile.isBidirectional(call.getVideoState())
+                && videoCrbtConfig);
+    }
 }
