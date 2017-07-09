@@ -568,4 +568,23 @@ public class QtiCallUtils {
         return hasVoiceCapabilities(call) || hasTransmitVideoCapabilities(call)
                 || hasReceiveVideoCapabilities(call);
     }
+
+    //Checks if DialerCall has video CRBT - an outgoing receive-only video call
+    public static boolean isVideoCrbtVoLteCall(Call call) {
+        return (call != null && call.getState() == Call.State.DIALING
+                && VideoProfile.isReceptionEnabled(call.getVideoState()));
+    }
+
+    //Checks if CallList has CRBT Video Call. An outgoing bidirectional video call
+    //is treated as CRBT video call if CRBT feature is enabled
+    public static boolean isVideoCrbtVtCall(Context context, Call call) {
+        if (context == null) {
+            Log.w(context, "Context is null...");
+        }
+        boolean videoCrbtConfig = QtiImsExtUtils.
+            isCarrierConfigEnabled(context, "config_enable_video_crbt");
+        return (call != null && call.getState() == Call.State.DIALING
+                && VideoProfile.isBidirectional(call.getVideoState())
+                && videoCrbtConfig);
+    }
 }
