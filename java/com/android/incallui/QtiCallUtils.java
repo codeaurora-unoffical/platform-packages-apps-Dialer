@@ -34,13 +34,12 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.IBinder;
 import android.os.RemoteException;
-import android.provider.Settings;
+
 import android.telecom.Connection.VideoProvider;
 import android.telecom.VideoProfile;
 import android.telephony.TelephonyManager;
 import android.widget.Toast;
 
-import com.android.dialer.common.LogUtil;
 import com.android.dialer.util.PermissionsUtil;
 
 import java.lang.reflect.*;
@@ -50,6 +49,7 @@ import org.codeaurora.internal.IExtTelephony;
 import org.codeaurora.ims.utils.QtiImsExtUtils;
 
 import com.android.ims.ImsManager;
+import com.android.incallui.call.CallList;
 import com.android.incallui.call.DialerCall;
 
 /**
@@ -198,23 +198,6 @@ public class QtiCallUtils {
         return intent;
     }
 
-    /**
-     * Checks the Settings to conclude on the call deflect support.
-     * Returns true if call deflect is possible, false otherwise.
-     */
-    public static boolean isCallDeflectSupported(Context context) {
-        int value = 0;
-        try{
-            value = android.provider.Settings.Global.getInt(
-                    context.getContentResolver(),
-                    QtiImsExtUtils.QTI_IMS_DEFLECT_ENABLED);
-        } catch(Settings.SettingNotFoundException e) {
-            //do Nothing
-            LogUtil.e("QtiCallUtils.isCallDeflectSupported", "" + e);
-        }
-        return (value == 1);
-    }
-
     /** This method converts the QtiCallConstants' Orientation modes to the ActivityInfo
      * screen orientation.
      */
@@ -338,6 +321,54 @@ public class QtiCallUtils {
                 return R.string.camera_ready;
             default:
                 return R.string.unknown_call_session_event;
+        }
+    }
+
+    public static CharSequence getLabelForIncomingWifiVideoCall(Context context) {
+        final DialerCall call = getIncomingOrActiveCall();
+
+        if (call == null) {
+            return context.getString(R.string.contact_grid_incoming_wifi_video_call);
+        }
+
+        final int requestedVideoState = call.getVideoTech().getRequestedVideoState();
+
+        if (QtiCallUtils.isVideoRxOnly(call)
+            || requestedVideoState == VideoProfile.STATE_RX_ENABLED) {
+            return context.getString(R.string.incoming_wifi_video_rx_call);
+        } else if (QtiCallUtils.isVideoTxOnly(call)
+            || requestedVideoState == VideoProfile.STATE_TX_ENABLED) {
+            return context.getString(R.string.incoming_wifi_video_tx_call);
+        } else {
+            return context.getString(R.string.contact_grid_incoming_wifi_video_call);
+        }
+    }
+
+    public static CharSequence getLabelForIncomingVideoCall(Context context) {
+        final DialerCall call = getIncomingOrActiveCall();
+        if (call == null) {
+            return context.getString(R.string.contact_grid_incoming_video_call);
+        }
+
+        final int requestedVideoState = call.getVideoTech().getRequestedVideoState();
+
+        if (QtiCallUtils.isVideoRxOnly(call)
+            || requestedVideoState == VideoProfile.STATE_RX_ENABLED) {
+            return context.getString(R.string.incoming_video_rx_call);
+        } else if (QtiCallUtils.isVideoTxOnly(call)
+            || requestedVideoState == VideoProfile.STATE_TX_ENABLED) {
+            return context.getString(R.string.incoming_video_tx_call);
+        } else {
+            return context.getString(R.string.contact_grid_incoming_video_call);
+        }
+    }
+
+    private static DialerCall getIncomingOrActiveCall() {
+        CallList callList = InCallPresenter.getInstance().getCallList();
+        if (callList == null) {
+           return null;
+        } else {
+           return callList.getIncomingOrActive();
         }
     }
 }

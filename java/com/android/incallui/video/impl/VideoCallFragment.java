@@ -71,6 +71,8 @@ import com.android.incallui.audioroute.AudioRouteSelectorDialogFragment;
 import com.android.incallui.audioroute.AudioRouteSelectorDialogFragment.AudioRouteSelectorPresenter;
 import com.android.incallui.contactgrid.ContactGridManager;
 import com.android.incallui.hold.OnHoldFragment;
+import com.android.incallui.InCallActivity;
+import com.android.incallui.InCallPresenter;
 import com.android.incallui.QtiCallUtils;
 import com.android.incallui.incall.protocol.InCallButtonIds;
 import com.android.incallui.incall.protocol.InCallButtonIdsExtension;
@@ -83,6 +85,8 @@ import com.android.incallui.incall.protocol.InCallScreenDelegateFactory;
 import com.android.incallui.incall.protocol.PrimaryCallState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
 import com.android.incallui.incall.protocol.SecondaryInfo;
+import com.android.incallui.PictureModeHelper;
+import com.android.incallui.VideoCallPresenter;
 import com.android.incallui.video.impl.CameraPermissionDialogFragment.CameraPermissionDialogCallback;
 import com.android.incallui.video.impl.CheckableImageButton.OnCheckedChangeListener;
 import com.android.incallui.video.protocol.VideoCallScreen;
@@ -111,8 +115,8 @@ public class VideoCallFragment extends Fragment
   @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
   static final String ARG_CALL_ID = "call_id";
 
-  private static final float BLUR_PREVIEW_RADIUS = 16.0f;
-  private static final float BLUR_PREVIEW_SCALE_FACTOR = 1.0f;
+  public static final float BLUR_PREVIEW_RADIUS = 16.0f;
+  public static final float BLUR_PREVIEW_SCALE_FACTOR = 1.0f;
   private static final float BLUR_REMOTE_RADIUS = 25.0f;
   private static final float BLUR_REMOTE_SCALE_FACTOR = 0.25f;
   private static final float ASPECT_RATIO_MATCH_THRESHOLD = 0.2f;
@@ -124,7 +128,7 @@ public class VideoCallFragment extends Fragment
   private static final long CAMERA_PERMISSION_DIALOG_DELAY_IN_MILLIS = 2000L;
   private static final long VIDEO_OFF_VIEW_FADE_OUT_DELAY_IN_MILLIS = 2000L;
 
-  private final ViewOutlineProvider circleOutlineProvider =
+  public static final ViewOutlineProvider circleOutlineProvider =
       new ViewOutlineProvider() {
         @Override
         public void getOutline(View view, Outline outline) {
@@ -881,7 +885,10 @@ public class VideoCallFragment extends Fragment
     if (shouldShowGreenScreen) {
       enterGreenScreenMode();
     } else {
-      exitGreenScreenMode();
+      final PictureModeHelper pictureModeHelper = VideoCallPresenter.getPictureModeHelper();
+      if (pictureModeHelper != null && !pictureModeHelper.shouldShowPreviewOnly()) {
+        exitGreenScreenMode();
+      }
     }
     if (shouldShowFullscreen) {
       enterFullscreenMode();
@@ -962,7 +969,7 @@ public class VideoCallFragment extends Fragment
   @Override
   public void enableButton(@InCallButtonIds int buttonId, boolean enable) {
     LogUtil.v(
-        "VideoCallFragment.setEnabled",
+        "VideoCallFragment.enableButton",
         "buttonId: %s, enable: %b",
         InCallButtonIdsExtension.toString(buttonId),
         enable);
@@ -990,6 +997,9 @@ public class VideoCallFragment extends Fragment
     muteButton.setEnabled(enabled);
     cameraOffButton.setEnabled(enabled);
     switchOnHoldCallController.setEnabled(enabled);
+    addCallButton.setEnabled(enabled);
+    mergeCallButton.setEnabled(enabled);
+    holdButton.setEnabled(enabled);
   }
 
   @Override
@@ -1124,8 +1134,15 @@ public class VideoCallFragment extends Fragment
 
   @Override
   public void onInCallScreenDialpadVisibilityChange(boolean isShowing) {
-    LogUtil.i("VideoCallFragment.onInCallScreenDialpadVisibilityChange","showing: "+isShowing);
-    moreOptionsMenuButton.setVisibility(!isShowing ? View.VISIBLE : View.GONE);
+    LogUtil.i("VideoCallFragment.onInCallScreenDialpadVisibilityChange", null);
+  }
+
+  @Override
+  public void onInCallShowDialpad(boolean isShown) {
+    LogUtil.i("VideoCallFragment.onInCallShowDialpad","isShown: "+isShown);
+    boolean shouldShowMoreButton = !isShown
+      && BottomSheetHelper.getInstance().shallShowMoreButton(getActivity());
+    moreOptionsMenuButton.setVisibility(shouldShowMoreButton ? View.VISIBLE : View.GONE);
   }
 
   @Override
@@ -1307,7 +1324,7 @@ public class VideoCallFragment extends Fragment
         BLUR_REMOTE_SCALE_FACTOR);
   }
 
-  private void updateBlurredImageView(
+  public static void updateBlurredImageView(
       TextureView textureView,
       ImageView blurredImageView,
       boolean isVideoEnabled,
@@ -1324,7 +1341,11 @@ public class VideoCallFragment extends Fragment
         // TODO: When the view is first displayed after a rotation the bitmap is empty
         // and thus this blur has no effect.
         // This call can take 100 milliseconds.
-        blur(getContext(), bitmap, blurRadius);
+        final InCallActivity inCallActivity = InCallPresenter.getInstance().getActivity();
+        if (inCallActivity == null) {
+            return;
+        }
+        blur(inCallActivity, bitmap, blurRadius);
 
         // TODO: Figure out why only have to apply the transform in landscape mode
         if (width > height) {

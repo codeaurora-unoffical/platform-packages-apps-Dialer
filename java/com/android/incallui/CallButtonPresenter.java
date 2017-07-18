@@ -216,6 +216,10 @@ public class CallButtonPresenter
 
   @Override
   public void muteClicked(boolean checked, boolean clickedByUser) {
+    if (mCall == null) {
+      return;
+    }
+
     LogUtil.i(
         "CallButtonPresenter", "turning on mute: %s, clicked by user: %s", checked, clickedByUser);
     if (clickedByUser) {
@@ -329,6 +333,10 @@ public class CallButtonPresenter
    */
   @Override
   public void switchCameraClicked(boolean useFrontFacingCamera) {
+    if (mCall == null) {
+      return;
+    }
+
     InCallCameraManager cameraManager = InCallPresenter.getInstance().getInCallCameraManager();
     cameraManager.setUseFrontFacingCamera(useFrontFacingCamera);
 
@@ -346,6 +354,10 @@ public class CallButtonPresenter
 
   @Override
   public void toggleCameraClicked() {
+    if (mCall == null) {
+      return;
+    }
+
     LogUtil.i("CallButtonPresenter.toggleCameraClicked", "");
     Logger.get(mContext)
         .logCallImpression(
@@ -422,14 +434,14 @@ public class CallButtonPresenter
     final boolean showSwap = call.can(android.telecom.Call.Details.CAPABILITY_SWAP_CONFERENCE);
     final boolean showHold =
         !showSwap
-            && !call.hasSentVideoUpgradeRequest()
+            && (!call.hasSentVideoUpgradeRequest() || call.hasVideoUpgadeRequestFailed())
             && call.can(android.telecom.Call.Details.CAPABILITY_SUPPORT_HOLD)
             && call.can(android.telecom.Call.Details.CAPABILITY_HOLD);
     final boolean isCallOnHold = call.getState() == DialerCall.State.ONHOLD;
 
     final boolean showAddCall =
         TelecomAdapter.getInstance().canAddCall() && UserManagerCompat.isUserUnlocked(mContext)
-            && !call.hasSentVideoUpgradeRequest();
+            && (!call.hasSentVideoUpgradeRequest()|| call.hasVideoUpgadeRequestFailed());
     final boolean showMerge = call.can(android.telecom.Call.Details.CAPABILITY_MERGE_CONFERENCE);
     final boolean useExt = QtiCallUtils.useExt(mContext);
     final boolean showUpgradeToVideo = !isVideo && (hasVideoCallCapabilities(call)) && !useExt;
