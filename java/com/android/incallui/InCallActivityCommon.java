@@ -21,7 +21,6 @@ import android.app.ActivityManager.AppTask;
 import android.app.ActivityManager.TaskDescription;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 import android.content.DialogInterface.OnDismissListener;
@@ -36,10 +35,7 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.res.ResourcesCompat;
-import android.telecom.DisconnectCause;
 import android.telecom.PhoneAccountHandle;
-import android.text.TextUtils;
-import android.util.Pair;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
@@ -63,9 +59,9 @@ import com.android.incallui.call.CallList;
 import com.android.incallui.call.DialerCall;
 import com.android.incallui.call.DialerCall.State;
 import com.android.incallui.call.TelecomAdapter;
+import com.android.incallui.disconnectdialog.DisconnectMessage;
 import com.android.incallui.telecomeventui.InternationalCallOnWifiDialogFragment;
 import com.android.incallui.telecomeventui.InternationalCallOnWifiDialogFragment.Callback;
-import com.android.incallui.wifi.EnableWifiCallingPrompt;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
@@ -176,12 +172,12 @@ public class InCallActivityCommon {
         WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
             | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
             | WindowManager.LayoutParams.FLAG_IGNORE_CHEEK_PRESSES;
-
+    Intent intent = inCallActivity.getIntent();
     inCallActivity.getWindow().addFlags(flags);
 
     inCallActivity.setContentView(R.layout.incall_screen);
 
-    internalResolveIntent(inCallActivity.getIntent());
+    internalResolveIntent(intent);
 
     boolean isLandscape =
         inCallActivity.getResources().getConfiguration().orientation
@@ -214,15 +210,16 @@ public class InCallActivityCommon {
           }
         });
 
+    if (intent.hasExtra(INTENT_EXTRA_SHOW_DIALPAD)) {
+        boolean showDialpad = intent.getBooleanExtra(INTENT_EXTRA_SHOW_DIALPAD, false);
+        showDialpadRequest = showDialpad ? DIALPAD_REQUEST_SHOW : DIALPAD_REQUEST_HIDE;
+        animateDialpadOnShow = false;
+    }
+
     if (icicle != null) {
       // If the dialpad was shown before, set variables indicating it should be shown and
       // populated with the previous DTMF text.  The dialpad is actually shown and populated
       // in onResume() to ensure the hosting fragment has been inflated and is ready to receive it.
-      if (icicle.containsKey(INTENT_EXTRA_SHOW_DIALPAD)) {
-        boolean showDialpad = icicle.getBoolean(INTENT_EXTRA_SHOW_DIALPAD);
-        showDialpadRequest = showDialpad ? DIALPAD_REQUEST_SHOW : DIALPAD_REQUEST_HIDE;
-        animateDialpadOnShow = false;
-      }
       dtmfTextToPreopulate = icicle.getString(DIALPAD_TEXT_KEY);
 
       SelectPhoneAccountDialogFragment dialogFragment =
@@ -498,18 +495,15 @@ public class InCallActivityCommon {
     }
   }
 
-  public void maybeShowErrorDialogOnDisconnect(DisconnectCause cause) {
+  public void maybeShowErrorDialogOnDisconnect(DisconnectMessage disconnectMessage) {
     LogUtil.i(
-        "InCallActivityCommon.maybeShowErrorDialogOnDisconnect", "disconnect cause: %s", cause);
+        "InCallActivityCommon.maybeShowErrorDialogOnDisconnect",
+        "disconnect cause: %s",
+        disconnectMessage);
 
     if (!inCallActivity.isFinishing()) {
-      if (EnableWifiCallingPrompt.shouldShowPrompt(cause)) {
-        Pair<Dialog, CharSequence> pair =
-            EnableWifiCallingPrompt.createDialog(inCallActivity, cause);
-        showErrorDialog(pair.first, pair.second);
-      } else if (shouldShowDisconnectErrorDialog(cause)) {
-        Pair<Dialog, CharSequence> pair = getDisconnectErrorDialog(inCallActivity, cause);
-        showErrorDialog(pair.first, pair.second);
+      if (disconnectMessage.dialog != null) {
+        showErrorDialog(disconnectMessage.dialog, disconnectMessage.toastMessage);
       }
     }
   }
@@ -559,23 +553,6 @@ public class InCallActivityCommon {
 
     InCallCsRedialHandler.getInstance().dismissPendingDialogs();
     BottomSheetHelper.getInstance().dismissBottomSheet();
-  }
-
-  private static boolean shouldShowDisconnectErrorDialog(@NonNull DisconnectCause cause) {
-    return !TextUtils.isEmpty(cause.getDescription())
-        && (cause.getCode() == DisconnectCause.ERROR
-            || cause.getCode() == DisconnectCause.RESTRICTED);
-  }
-
-  private static Pair<Dialog, CharSequence> getDisconnectErrorDialog(
-      @NonNull Context context, @NonNull DisconnectCause cause) {
-    CharSequence message = cause.getDescription();
-    Dialog dialog =
-        new AlertDialog.Builder(context)
-            .setMessage(message)
-            .setPositiveButton(android.R.string.ok, null)
-            .create();
-    return new Pair<>(dialog, message);
   }
 
   private void showErrorDialog(Dialog dialog, CharSequence message) {

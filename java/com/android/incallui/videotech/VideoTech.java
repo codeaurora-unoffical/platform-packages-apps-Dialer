@@ -17,6 +17,11 @@
 package com.android.incallui.videotech;
 
 import android.content.Context;
+<<<<<<< HEAD
+import android.telecom.InCallService.VideoCall;
+=======
+import android.support.annotation.Nullable;
+>>>>>>> 442c9b88edcdf780933c4c1f274021a3b48d2a4a
 import com.android.incallui.video.protocol.VideoCallScreen;
 import com.android.incallui.video.protocol.VideoCallScreenDelegate;
 import com.android.incallui.videotech.utils.SessionModificationState;
@@ -41,14 +46,22 @@ public interface VideoTech {
 
   void onCallStateChanged(Context context, int newState);
 
+  void onRemovedFromCallList();
+
   @SessionModificationState
   int getSessionModificationState();
 
   void upgradeToVideo();
 
+  void upgradeToVideo(int videoState);
+
   void acceptVideoRequest();
 
   void acceptVideoRequestAsAudio();
+
+  void acceptVideoRequest(int videoState);
+
+  int getRequestedVideoState();
 
   void declineVideoRequest();
 
@@ -62,9 +75,11 @@ public interface VideoTech {
 
   void unpause();
 
-  void setCamera(String cameraId);
+  void setCamera(@Nullable String cameraId);
 
   void setDeviceOrientation(int rotation);
+
+  VideoCall getVideoCall();
 
   /** Listener for video call events. */
   interface VideoTechListener {
@@ -80,5 +95,7 @@ public interface VideoTech {
     void onVideoUpgradeRequestReceived();
 
     void onUpgradedToVideo(boolean switchToSpeaker);
+
+    void onCallSessionEvent(int event);
   }
 }

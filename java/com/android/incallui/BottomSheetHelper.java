@@ -32,6 +32,7 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.os.UserManagerCompat;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -42,41 +43,47 @@ import android.support.annotation.Nullable;
 import android.os.Build.VERSION;
 import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.telecom.Call.Details;
-import android.telecom.PhoneAccountHandle;
-import android.telephony.SubscriptionInfo;
-import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyManager;
+import android.telecom.VideoProfile;
+
 import com.android.dialer.compat.ActivityCompat;
 import com.android.incallui.call.CallList;
 import com.android.incallui.call.DialerCall;
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.util.IntentUtil;
+import com.android.incallui.videotech.ims.ImsVideoTech;
+import com.android.incallui.videotech.utils.VideoUtils;
 
-import java.lang.reflect.*;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
 
+import org.codeaurora.ims.QtiCallConstants;
 import org.codeaurora.ims.QtiImsException;
 import org.codeaurora.ims.QtiImsExtListenerBaseImpl;
 import org.codeaurora.ims.QtiImsExtManager;
 import org.codeaurora.ims.utils.QtiImsExtUtils;
 
-public class BottomSheetHelper {
+public class BottomSheetHelper implements InCallPresenter.InCallEventListener,
+  PrimaryCallTracker.PrimaryCallChangeListener {
 
    private ConcurrentHashMap<String,Boolean> moreOptionsMap;
    private ExtBottomSheetFragment moreOptionsSheet;
    private int voiceNetworkType;
+   private boolean mIsHideMe = false;
    private Context mContext;
    private DialerCall mCall;
    private PrimaryCallTracker mPrimaryCallTracker;
    private Resources mResources;
    private static BottomSheetHelper mHelper;
    private AlertDialog callTransferDialog;
+   private AlertDialog modifyCallDialog;
    private static final int BLIND_TRANSFER = 0;
    private static final int ASSURED_TRANSFER = 1;
    private static final int CONSULTATIVE_TRANSFER = 2;
+   private static final int INVALID_INDEX = -1;
 
    /* QtiImsExtListenerBaseImpl instance to handle call deflection response */
    private QtiImsExtListenerBaseImpl imsInterfaceListener =
@@ -110,18 +117,22 @@ public class BottomSheetHelper {
      LogUtil.d("BottomSheetHelper","setUp");
      mContext = context;
      mResources = context.getResources();
-     final String[][] moreOptions = getMoreOptionsFromRes(
-        mContext.getResources(),R.array.bottom_sheet_more_options);
-     moreOptionsMap = ExtBottomSheetFragment.prepareSheetOptions(moreOptions);
+     final String[][] moreOptions = getMoreOptionsFromRes(R.array.bottom_sheet_more_options);
+     moreOptionsMap = prepareSheetOptions(moreOptions);
      mPrimaryCallTracker = new PrimaryCallTracker();
      InCallPresenter.getInstance().addListener(mPrimaryCallTracker);
      InCallPresenter.getInstance().addIncomingCallListener(mPrimaryCallTracker);
+     InCallPresenter.getInstance().addInCallEventListener(this);
+     mPrimaryCallTracker.addListener(this);
    }
 
    public void tearDown() {
      LogUtil.d("BottomSheetHelper","tearDown");
      InCallPresenter.getInstance().removeListener(mPrimaryCallTracker);
      InCallPresenter.getInstance().removeIncomingCallListener(mPrimaryCallTracker);
+     InCallPresenter.getInstance().removeInCallEventListener(this);
+     mIsHideMe = false;
+     mPrimaryCallTracker.removeListener(this);
      mPrimaryCallTracker = null;
      mContext = null;
      mResources = null;
@@ -136,8 +147,40 @@ public class BottomSheetHelper {
        maybeUpdateDeflectInMap();
        maybeUpdateAddParticipantInMap();
        maybeUpdateTransferInMap();
+       maybeUpdateHideMeInMap();
        maybeUpdateManageConferenceInMap();
+       maybeUpdateOneWayVideoOptionsInMap();
+       maybeUpdateModifyCallInMap();
+       maybeUpdatePipModeInMap();
      }
+   }
+
+   // Utility function which converts options from string array to HashMap<String,Boolean>
+   private static ConcurrentHashMap<String,Boolean> prepareSheetOptions(String[][] answerOptArray) {
+     ConcurrentHashMap<String,Boolean> map = new ConcurrentHashMap<String,Boolean>();
+     for (int iter = 0; iter < answerOptArray.length; iter ++) {
+       map.put(answerOptArray[iter][0],Boolean.valueOf(answerOptArray[iter][1]));
+     }
+     return map;
+   }
+
+   private boolean isOneWayVideoOptionsVisible() {
+     final int primaryCallState = mCall.getState();
+     final int requestedVideoState = mCall.getVideoTech().getRequestedVideoState();
+     return (QtiCallUtils.useExt(mContext) && mCall.hasReceivedVideoUpgradeRequest()
+       && VideoProfile.isAudioOnly(mCall.getVideoState())
+       && VideoProfile.isBidirectional(requestedVideoState))
+       || ((DialerCall.State.INCOMING == primaryCallState
+       || DialerCall.State.CALL_WAITING == primaryCallState)
+       && QtiCallUtils.isVideoBidirectional(mCall));
+   }
+
+   private boolean isModifyCallOptionsVisible() {
+     final int primaryCallState = mCall.getState();
+     return QtiCallUtils.useExt(mContext) && (DialerCall.State.ACTIVE == primaryCallState
+        || DialerCall.State.ONHOLD == primaryCallState)
+        && QtiCallUtils.hasVoiceOrVideoCapabilities(mCall)
+        && !mCall.hasReceivedVideoUpgradeRequest();
    }
 
    private void maybeUpdateManageConferenceInMap() {
@@ -145,8 +188,18 @@ public class BottomSheetHelper {
         has manage conference capability */
      boolean visible = mCall.isVideoCall() && mCall.getState() == DialerCall.State.ACTIVE &&
          mCall.can(android.telecom.Call.Details.CAPABILITY_MANAGE_CONFERENCE);
-     moreOptionsMap.put(mResources.getString(R.string.manageConferenceLabel),
-         Boolean.valueOf(visible));
+     moreOptionsMap.put(mResources.getString(R.string.manageConferenceLabel), visible);
+   }
+
+   private void maybeUpdatePipModeInMap() {
+     /* show Pip mode option only for active video calls if the settings db property
+        "disable_pip_mode" is set */
+     if (!canDisablePipMode()) {
+        return;
+     }
+     final boolean visible = mCall.isVideoCall() && mCall.getState() == DialerCall.State.ACTIVE
+         && !mCall.hasReceivedVideoUpgradeRequest();
+     moreOptionsMap.put(mResources.getString(R.string.pipModeLabel), visible);
    }
 
    public boolean isManageConferenceVisible() {
@@ -155,7 +208,8 @@ public class BottomSheetHelper {
          return false;
      }
 
-     return moreOptionsMap.get(mResources.getString(R.string.manageConferenceLabel)).booleanValue();
+     return moreOptionsMap.get(mResources.getString(R.string.manageConferenceLabel)).booleanValue()
+        && !mCall.hasReceivedVideoUpgradeRequest();
    }
 
    public void showBottomSheet(FragmentManager manager) {
@@ -165,12 +219,18 @@ public class BottomSheetHelper {
    }
 
    public void dismissBottomSheet() {
-     LogUtil.d("BottomSheetHelper.dismissBottomSheet","moreOptionsSheet: " + moreOptionsSheet);
-     if (moreOptionsSheet != null) {
+     if (moreOptionsSheet != null && moreOptionsSheet.isVisible()) {
        moreOptionsSheet.dismiss();
+       moreOptionsSheet = null;
      }
      if (callTransferDialog != null && callTransferDialog.isShowing()) {
        callTransferDialog.dismiss();
+       callTransferDialog = null;
+     }
+
+     if (modifyCallDialog != null && modifyCallDialog.isShowing()) {
+       modifyCallDialog.dismiss();
+       modifyCallDialog = null;
      }
    }
 
@@ -178,13 +238,29 @@ public class BottomSheetHelper {
      //callback for bottomsheet clicks
      LogUtil.d("BottomSheetHelper.optionSelected","text : " + text);
      if (text.equals(mContext.getResources().getString(R.string.add_participant_option_msg))) {
-       startAddParticipantActivity();
+       if (QtiImsExtUtils.isCarrierConfigEnabled(getPhoneId(), mContext,
+               "add_multi_participants_enabled")) {
+         startAddMultiParticipantActivity();
+       } else {
+         startAddParticipantActivity();
+       }
      } else if (text.equals(mResources.getString(R.string.qti_description_target_deflect))) {
        deflectCall();
      } else if (text.equals(mResources.getString(R.string.qti_description_transfer))) {
        transferCall();
      } else if (text.equals(mResources.getString(R.string.manageConferenceLabel))) {
        manageConferenceCall();
+     } else if (text.equals(mResources.getString(R.string.qti_ims_hideMeText_unselected)) ||
+         text.equals(mResources.getString(R.string.qti_ims_hideMeText_selected))) {
+       hideMeClicked(text.equals(mResources.getString(R.string.qti_ims_hideMeText_unselected)));
+     } else if (text.equals(mResources.getString(R.string.video_tx_label))) {
+       acceptIncomingCallOrUpgradeRequest(VideoProfile.STATE_TX_ENABLED);
+     } else if (text.equals(mResources.getString(R.string.video_rx_label))) {
+       acceptIncomingCallOrUpgradeRequest(VideoProfile.STATE_RX_ENABLED);
+     } else if (text.equals(mResources.getString(R.string.modify_call_label))) {
+       displayModifyCallOptions();
+     } else if (text.equals(mResources.getString(R.string.pipModeLabel))) {
+       VideoCallPresenter.showPipModeMenu();
      }
      moreOptionsSheet = null;
    }
@@ -194,14 +270,13 @@ public class BottomSheetHelper {
      moreOptionsSheet = null;
    }
 
-   private String[][] getMoreOptionsFromRes(
-      final Resources res, final int resId) {
-     TypedArray typedArray = res.obtainTypedArray(resId);
+   private String[][] getMoreOptionsFromRes(final int resId) {
+     TypedArray typedArray = mResources.obtainTypedArray(resId);
      String[][] array = new String[typedArray.length()][];
      for  (int iter = 0;iter < typedArray.length(); iter++) {
        int id = typedArray.getResourceId(iter, 0);
        if (id > 0) {
-         array[iter] = res.getStringArray(id);
+         array[iter] = mResources.getStringArray(id);
        }
      }
      typedArray.recycle();
@@ -219,33 +294,35 @@ public class BottomSheetHelper {
            || DialerCall.State.CONNECTING == primaryCallState
            || DialerCall.State.DISCONNECTING == primaryCallState
            || call.hasSentVideoUpgradeRequest()
-           || !((getVoiceNetworkType() == TelephonyManager.NETWORK_TYPE_LTE)
-           || call.hasProperty(Details.PROPERTY_WIFI)));
+           || !(getPhoneIdExtra(call) != QtiCallConstants.INVALID_PHONE_ID));
        }
      }
      LogUtil.w("BottomSheetHelper shallShowMoreButton","returns false");
      return false;
    }
 
-   private int getVoiceNetworkType() {
-     return VERSION.SDK_INT >= VERSION_CODES.N
-       ? mContext.getSystemService(TelephonyManager.class).getVoiceNetworkType()
-       : TelephonyManager.NETWORK_TYPE_UNKNOWN;
+   private int getPhoneIdExtra(DialerCall call) {
+     final Bundle extras = call.getExtras();
+     return ((extras == null) ? QtiCallConstants.INVALID_PHONE_ID :
+         extras.getInt(QtiImsExtUtils.QTI_IMS_PHONE_ID_EXTRA_KEY,
+         QtiCallConstants.INVALID_PHONE_ID));
    }
 
   private boolean isAddParticipantSupported() {
-    return mCall != null && mCall.can(DialerCall.CAPABILITY_ADD_PARTICIPANT)
-        && UserManagerCompat.isUserUnlocked(mContext);
+    boolean showAddParticipant = mCall != null
+      && mCall.can(DialerCall.CAPABILITY_ADD_PARTICIPANT)
+      && UserManagerCompat.isUserUnlocked(mContext)
+      && !mCall.hasReceivedVideoUpgradeRequest();
+    if (QtiImsExtUtils.isCarrierConfigEnabled(getPhoneId(), mContext,
+        "add_participant_only_in_conference")) {
+      showAddParticipant = showAddParticipant && (mCall != null) && (mCall.isConferenceCall());
+    }
+    return showAddParticipant;
   }
 
   private void maybeUpdateAddParticipantInMap() {
-    if (isAddParticipantSupported()) {
-      moreOptionsMap.put(mContext.getResources().getString(R.string.add_participant_option_msg),
-          Boolean.TRUE);
-    } else {
-      moreOptionsMap.put(mContext.getResources().getString(R.string.add_participant_option_msg),
-          Boolean.FALSE);
-    }
+    moreOptionsMap.put(mResources.getString(R.string.add_participant_option_msg),
+        isAddParticipantSupported());
   }
 
   private void startAddParticipantActivity() {
@@ -257,86 +334,62 @@ public class BottomSheetHelper {
     }
   }
 
-   private String getIccId() {
-     if (mPrimaryCallTracker != null) {
-       DialerCall call = mPrimaryCallTracker.getPrimaryCall();
-       if (call != null) {
-         PhoneAccountHandle ph = call.getAccountHandle();
-         if (ph != null) {
-           try {
-             String iccId = ph.getId();
-             if (iccId != null) {
-               return iccId;
-             }
-           } catch (Exception e) {
-             LogUtil.w("BottomSheetHelper.getIccId", "exception: " + e);
-           }
-           return null;
-         } else {
-           LogUtil.w("BottomSheetHelper.getIccId", "phoneAccountHandle is null");
-           return null;
-         }
-       }
-     }
-     LogUtil.w("BottomSheetHelper.getIccId", "mPrimaryCallTracker or call is null");
-     return null;
-   }
+  private void startAddMultiParticipantActivity() {
+    Intent intent = QtiCallUtils.getAddParticipantsIntent(null);
+    List<String> childCallIdList = (mCall != null) ? mCall.getChildCallIds() : null;
+    if (childCallIdList != null) {
+        StringBuffer sb = new StringBuffer();
+        for (String tmp: childCallIdList) {
+            String number = CallList.getInstance()
+                    .getCallById(tmp).getNumber();
+            if (number.contains(";")) {
+                String[] temp = number.split(";");
+                number = temp[0];
+            }
+            sb.append(number).append(";");
+        }
+        intent.putExtra("current_participant_list", sb.toString());
+    } else {
+      LogUtil.e("BottomSheetHelper.startAddMultiParticipantActivity",
+          "sendAddMultiParticipantsIntent, childCallIdList null.");
+    }
+    try {
+      mContext.startActivity(intent);
+    } catch (ActivityNotFoundException e) {
+      LogUtil.e("BottomSheetHelper.startAddMultiParticipantActivity",
+          "Activity not found. Exception = " + e);
+    }
+  }
 
-   private int getActiveSubIdFromIccId(String iccId) {
-     SubscriptionInfo subInfo = null;
-     try {
-       Class c = Class.forName("android.telephony.SubscriptionManager");
-       Method m = c.getMethod("getActiveSubscriptionInfoForIccIndex",
-            new Class[]{String.class});
-       SubscriptionManager subscriptionManager = SubscriptionManager.from(mContext);
-       if (subscriptionManager == null) {
-         return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-       }
-       subInfo = (SubscriptionInfo)m.invoke(subscriptionManager, iccId);
-     } catch (Exception e) {
-       LogUtil.e("BottomSheetHelper.getActiveSubIdFromIccId", " ex: " + e);
-     }
-     return (subInfo != null) ? subInfo.getSubscriptionId()
-          : SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-   }
-
-   public int getSubId() {
-     return getActiveSubIdFromIccId(getIccId());
-   }
-
-   /* this API should be called only when there is a call */
+   /**
+    * This API should be called only when there is a call.
+    * Caller should handle if INVALID_PHONE_ID is returned.
+    */
    public int getPhoneId() {
-     // check for phoneId only in multisim case, otherwise return 0
-     int phoneCount = mContext.getSystemService(TelephonyManager.class).getPhoneCount();
-     if (phoneCount > 1) {
-       int subId = getSubId();
-       LogUtil.d("BottomSheetHelper.getPhoneId", "subId: " + subId);
-       try {
-         Class c = Class.forName("android.telephony.SubscriptionManager");
-         Method m = c.getMethod("getPhoneId",new Class[]{int.class});
-         int phoneId = (Integer)m.invoke(null, subId);
-         if (phoneId >= phoneCount || phoneId < 0) {
-           phoneId = 0;
-         }
-         LogUtil.d("BottomSheetHelper.getPhoneId", "phoneid: " + phoneId);
-         return phoneId;
-       } catch (Exception e) {
-         LogUtil.e("BottomSheetHelper.getPhoneId", " ex: " + e);
-       }
+     if (mPrimaryCallTracker == null) {
+       LogUtil.w("BottomSheetHelper.getPhoneId", "mPrimaryCallTracker is null.");
+       return QtiCallConstants.INVALID_PHONE_ID;
      }
-     return 0;
+
+     final DialerCall call = mPrimaryCallTracker.getPrimaryCall();
+     if (call == null) {
+       LogUtil.w("BottomSheetHelper.getPhoneId", "primaryCall is null.");
+       return QtiCallConstants.INVALID_PHONE_ID;
+     }
+
+     final int phoneId = getPhoneIdExtra(call);
+     LogUtil.d("BottomSheetHelper.getPhoneId", "phoneId : " + phoneId);
+     return phoneId;
    }
 
    private void maybeUpdateDeflectInMap() {
-     if (QtiCallUtils.isCallDeflectSupported(mContext) &&
-          (mCall.getState() == DialerCall.State.INCOMING) && !mCall.isVideoCall() &&
-          !mCall.hasReceivedVideoUpgradeRequest()) {
-       moreOptionsMap.put(mResources.getString(R.string.qti_description_target_deflect),
-            Boolean.TRUE);
-     } else {
-       moreOptionsMap.put(mResources.getString(R.string.qti_description_target_deflect),
-            Boolean.FALSE);
-     }
+     final boolean showDeflectCall =
+         QtiImsExtUtils.isCallDeflectionSupported(getPhoneId(), mContext) &&
+         (mCall.getState() == DialerCall.State.INCOMING ||
+         mCall.getState() == DialerCall.State.CALL_WAITING) &&
+         !mCall.isVideoCall() && !mCall.hasReceivedVideoUpgradeRequest();
+     moreOptionsMap.put(mResources.getString(R.string.qti_description_target_deflect),
+         showDeflectCall);
    }
 
    /**
@@ -377,11 +430,51 @@ public class BottomSheetHelper {
    }
 
    private void maybeUpdateTransferInMap() {
-     if (getCallTransferCapabilities() != 0) {
-       moreOptionsMap.put(mResources.getString(R.string.qti_description_transfer), Boolean.TRUE);
-     } else {
-       moreOptionsMap.put(mResources.getString(R.string.qti_description_transfer), Boolean.FALSE);
+     moreOptionsMap.put(mResources.getString(R.string.qti_description_transfer),
+         getCallTransferCapabilities() != 0 && !mCall.hasReceivedVideoUpgradeRequest());
+   }
+
+   private void maybeUpdateHideMeInMap() {
+     if (!QtiImsExtUtils.shallShowStaticImageUi(getPhoneId(), mContext) ||
+         !VideoUtils.hasCameraPermissionAndAllowedByUser(mContext)) {
+       return;
      }
+
+     LogUtil.v("BottomSheetHelper.maybeUpdateHideMeInMap", " mIsHideMe = " + mIsHideMe);
+     String hideMeText = mIsHideMe ? mResources.getString(R.string.qti_ims_hideMeText_selected) :
+         mResources.getString(R.string.qti_ims_hideMeText_unselected);
+     moreOptionsMap.put(hideMeText, mCall.isVideoCall()
+         && mCall.getState() == DialerCall.State.ACTIVE
+         && !mCall.hasReceivedVideoUpgradeRequest());
+   }
+
+   /**
+    * Handles click on hide me button
+    * @param isHideMe True if user selected hide me option else false
+    */
+   private void hideMeClicked(boolean isHideMe) {
+     LogUtil.d("BottomSheetHelper.hideMeClicked", " isHideMe = " + isHideMe);
+     mIsHideMe = isHideMe;
+     if (isHideMe) {
+       // Replace "Hide Me" string with "Show Me"
+       moreOptionsMap.remove(mResources.getString(R.string.qti_ims_hideMeText_unselected));
+       moreOptionsMap.put(mResources.getString(R.string.qti_ims_hideMeText_selected), isHideMe);
+     } else {
+       // Replace "Show Me" string with "Hide Me"
+       moreOptionsMap.remove(mResources.getString(R.string.qti_ims_hideMeText_selected));
+       moreOptionsMap.put(mResources.getString(R.string.qti_ims_hideMeText_unselected), !isHideMe);
+     }
+
+     /* Click on hideme shall change the static image state i.e. decision
+        is made in VideoCallPresenter whether to replace preview video with
+        static image or whether to resume preview video streaming */
+     InCallPresenter.getInstance().notifyStaticImageStateChanged(isHideMe);
+   }
+
+   // Returns TRUE if UE is in hide me mode else returns FALSE
+   public boolean isHideMeSelected() {
+     LogUtil.v("BottomSheetHelper.isHideMeSelected", "mIsHideMe: " + mIsHideMe);
+     return mIsHideMe;
    }
 
    private void manageConferenceCall() {
@@ -425,7 +518,7 @@ public class BottomSheetHelper {
               dialog.dismiss();
          }
      };
-     builder.setSingleChoiceItems(items.toArray(new CharSequence[0]), -1, listener);
+     builder.setSingleChoiceItems(items.toArray(new CharSequence[0]), INVALID_INDEX, listener);
      callTransferDialog = builder.create();
      callTransferDialog.show();
    }
@@ -476,4 +569,149 @@ public class BottomSheetHelper {
        LogUtil.e("BottomSheetHelper.sendCallTransferRequest", "exception " + e);
      }
    }
+
+   private void maybeUpdateOneWayVideoOptionsInMap() {
+     final boolean showOneWayVideo = isOneWayVideoOptionsVisible();
+     moreOptionsMap.put(mResources.getString(R.string.video_rx_label), showOneWayVideo);
+     moreOptionsMap.put(mResources.getString(R.string.video_tx_label), showOneWayVideo);
+   }
+
+   private void maybeUpdateModifyCallInMap() {
+     moreOptionsMap.put(mContext.getResources().getString(R.string.modify_call_label),
+        isModifyCallOptionsVisible());
+   }
+
+   private void acceptIncomingCallOrUpgradeRequest(int videoState) {
+     if (mCall == null) {
+       LogUtil.e("BottomSheetHelper.acceptIncomingCallOrUpgradeRequest", "Call is null. Return");
+       return;
+     }
+
+     if (mCall.hasReceivedVideoUpgradeRequest()) {
+       mCall.getVideoTech().acceptVideoRequest(videoState);
+     } else {
+       mCall.answer(videoState);
+     }
+   }
+
+    /**
+     * The function is called when Modify Call button gets pressed. The function creates and
+     * displays modify call options.
+     */
+    public void displayModifyCallOptions() {
+      final InCallActivity inCallActivity = InCallPresenter.getInstance().getActivity();
+      if (inCallActivity == null) {
+        LogUtil.e("BottomSheetHelper.displayModifyCallOptions", "inCallActivity is NULL");
+        return;
+      }
+
+      if (mCall == null) {
+        LogUtil.e("BottomSheetHelper.displayModifyCallOptions",
+            "Can't display modify call options. Call is null");
+        return;
+      }
+
+      if (isTtyEnabled(inCallActivity)) {
+        LogUtil.w("BottomSheetHelper.displayModifyCallOptions",
+            "modify call is allowed only when TTY is off.");
+        QtiCallUtils.displayToast(inCallActivity, R.string.video_call_not_allowed_if_tty_enabled);
+        return;
+      }
+
+      final ArrayList<CharSequence> items = new ArrayList<CharSequence>();
+      final ArrayList<Integer> itemToCallType = new ArrayList<Integer>();
+
+      // Prepare the string array and mapping.
+      if (QtiCallUtils.hasVoiceCapabilities(mCall) && mCall.isVideoCall()) {
+        items.add(mResources.getText(R.string.modify_call_option_voice));
+        itemToCallType.add(VideoProfile.STATE_AUDIO_ONLY);
+      }
+
+      if (QtiCallUtils.hasReceiveVideoCapabilities(mCall) && !QtiCallUtils.isVideoRxOnly(mCall)) {
+        items.add(mResources.getText(R.string.modify_call_option_vt_rx));
+        itemToCallType.add(VideoProfile.STATE_RX_ENABLED);
+      }
+
+      if (QtiCallUtils.hasTransmitVideoCapabilities(mCall) && !QtiCallUtils.isVideoTxOnly(mCall)) {
+        items.add(mResources.getText(R.string.modify_call_option_vt_tx));
+        itemToCallType.add(VideoProfile.STATE_TX_ENABLED);
+      }
+
+      if (QtiCallUtils.hasReceiveVideoCapabilities(mCall)
+          && QtiCallUtils.hasTransmitVideoCapabilities(mCall)
+          && !QtiCallUtils.isVideoBidirectional(mCall)) {
+        items.add(mResources.getText(R.string.modify_call_option_vt));
+        itemToCallType.add(VideoProfile.STATE_BIDIRECTIONAL);
+      }
+
+      AlertDialog.Builder builder = new AlertDialog.Builder(inCallActivity);
+      builder.setTitle(R.string.modify_call_option_title);
+
+      DialogInterface.OnClickListener listener = new DialogInterface.OnClickListener() {
+          @Override
+          public void onClick(DialogInterface dialog, int item) {
+            final int selCallType = itemToCallType.get(item);
+            Log.v(this, "Videocall: ModifyCall: upgrade/downgrade to "
+                + QtiCallUtils.callTypeToString(selCallType));
+            changeToVideoClicked(mCall, selCallType);
+            dialog.dismiss();
+          }
+      };
+      builder.setSingleChoiceItems(items.toArray(new CharSequence[0]), INVALID_INDEX, listener);
+      modifyCallDialog = builder.create();
+      modifyCallDialog.show();
+    }
+
+    /**
+     * Sends a session modify request to the telephony framework
+     */
+    private void changeToVideoClicked(DialerCall call, int videoState) {
+      call.getVideoTech().upgradeToVideo(videoState);
+    }
+
+    @Override
+    public void onSendStaticImageStateChanged(boolean isEnabled) {
+      //No-op
+    }
+
+    /**
+     * Handles a change to the fullscreen mode of the app.
+     *
+     * @param isFullscreenMode {@code true} if the app is now fullscreen, {@code false} otherwise.
+     */
+    @Override
+    public void onFullscreenModeChanged(boolean isFullscreenMode) {
+      if (isFullscreenMode) {
+        dismissBottomSheet();
+      }
+    }
+
+    @Override
+    public void onPrimaryCallChanged(DialerCall call) {
+      dismissBottomSheet();
+    }
+
+     /**
+     * Returns true if TTY mode is enabled, false otherwise
+     */
+    private static boolean isTtyEnabled(final Context context) {
+      if (context == null) {
+        LogUtil.w("BottomSheetHelper.isTtyEnabled", "Context is null...");
+        return false;
+      }
+
+      final int TTY_MODE_OFF = 0;
+      final String PREFERRED_TTY_MODE = "preferred_tty_mode";
+      return (android.provider.Settings.Secure.getInt(context.getContentResolver(),
+          PREFERRED_TTY_MODE, TTY_MODE_OFF) != TTY_MODE_OFF);
+    }
+
+    public boolean canDisablePipMode() {
+      return (Settings.Global.getInt(
+          mContext.getContentResolver(), "disable_pip_mode", 0) != 0);
+    }
+
+    public PrimaryCallTracker getPrimaryCallTracker() {
+      return mPrimaryCallTracker;
+    }
 }

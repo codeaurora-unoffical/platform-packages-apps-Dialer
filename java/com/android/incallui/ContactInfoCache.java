@@ -33,6 +33,7 @@ import android.support.annotation.MainThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.WorkerThread;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.os.UserManagerCompat;
 import android.telecom.TelecomManager;
 import android.telephony.PhoneNumberUtils;
@@ -84,7 +85,6 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
   private final ConcurrentHashMap<String, ContactCacheEntry> mInfoMap = new ConcurrentHashMap<>();
   private final Map<String, Set<ContactInfoCacheCallback>> mCallBacks = new ArrayMap<>();
   private Drawable mDefaultContactPhotoDrawable;
-  private Drawable mConferencePhotoDrawable;
   private int mQueryId;
   private final DialerExecutor<CnapInformationWrapper> cachedNumberLookupExecutor =
       DialerExecutors.createNonUiTaskBuilder(new CachedNumberLookupWorker()).build();
@@ -407,7 +407,7 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
     } else {
       ContactCacheEntry initialCacheEntry =
           updateCallerInfoInCacheOnAnyThread(
-              callId, call.getNumberPresentation(), callerInfo, isIncoming, false, queryToken);
+              callId, call.getNumberPresentation(), callerInfo, false, queryToken);
       sendInfoNotifications(callId, initialCacheEntry);
     }
   }
@@ -417,7 +417,6 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
       String callId,
       int numberPresentation,
       CallerInfo callerInfo,
-      boolean isIncoming,
       boolean didLocalLookup,
       CallerInfoQueryToken queryToken) {
     Log.d(
@@ -444,16 +443,7 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
     Log.d(TAG, "Existing cacheEntry in hashMap " + existingCacheEntry);
 
     if (didLocalLookup) {
-      // Before issuing a request for more data from other services, we only check that the
-      // contact wasn't found in the local DB.  We don't check the if the cache entry already
-      // has a name because we allow overriding cnap data with data from other services.
-      if (!callerInfo.contactExists && mPhoneNumberService != null) {
-        Log.d(TAG, "Contact lookup. Local contacts miss, checking remote");
-        final PhoneNumberServiceListener listener =
-            new PhoneNumberServiceListener(callId, queryToken.mQueryId);
-        cacheEntry.hasPendingQuery = true;
-        mPhoneNumberService.getPhoneNumberInfo(cacheEntry.number, listener, listener, isIncoming);
-      } else if (cacheEntry.displayPhotoUri != null) {
+      if (cacheEntry.displayPhotoUri != null) {
         // When the difference between 2 numbers is only the prefix (e.g. + or IDD),
         // we will still trigger force query so that the number can be updated on
         // the calling screen. We need not query the image again if the previous
@@ -607,7 +597,7 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
 
     // This will only be true for emergency numbers
     if (info.photoResource != 0) {
-      cce.photo = context.getResources().getDrawable(info.photoResource);
+      cce.photo = ContextCompat.getDrawable(context, info.photoResource);
     } else if (info.isCachedPhotoCurrent) {
       if (info.cachedPhoto != null) {
         cce.photo = info.cachedPhoto;
@@ -673,14 +663,6 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
           mContext.getResources().getDrawable(R.drawable.img_no_image_automirrored);
     }
     return mDefaultContactPhotoDrawable;
-  }
-
-  public Drawable getConferenceDrawable() {
-    if (mConferencePhotoDrawable == null) {
-      mConferencePhotoDrawable =
-          mContext.getResources().getDrawable(R.drawable.img_conference_automirrored);
-    }
-    return mConferencePhotoDrawable;
   }
 
   /** Callback interface for the contact query. */
@@ -798,8 +780,7 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
       maybeUpdateFromCequintCallerId(ci, cw.cnapName, mIsIncoming);
       long time = SystemClock.uptimeMillis() - start;
       Log.d(TAG, "Cequint Caller Id look up takes " + time + " ms.");
-      updateCallerInfoInCacheOnAnyThread(
-          cw.callId, cw.numberPresentation, ci, mIsIncoming, true, mQueryToken);
+      updateCallerInfoInCacheOnAnyThread(cw.callId, cw.numberPresentation, ci, true, mQueryToken);
     }
 
     @Override
@@ -816,6 +797,16 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
         Log.w(TAG, "Contact lookup done, but cache entry is not found.");
         clearCallbacks(callId);
         return;
+      }
+      // Before issuing a request for more data from other services, we only check that the
+      // contact wasn't found in the local DB.  We don't check the if the cache entry already
+      // has a name because we allow overriding cnap data with data from other services.
+      if (!callerInfo.contactExists && mPhoneNumberService != null) {
+        Log.d(TAG, "Contact lookup. Local contacts miss, checking remote");
+        final PhoneNumberServiceListener listener =
+            new PhoneNumberServiceListener(callId, mQueryToken.mQueryId);
+        cacheEntry.hasPendingQuery = true;
+        mPhoneNumberService.getPhoneNumberInfo(cacheEntry.number, listener, listener, mIsIncoming);
       }
       sendInfoNotifications(callId, cacheEntry);
       if (!cacheEntry.hasPendingQuery) {
@@ -880,6 +871,7 @@ public class ContactInfoCache implements OnImageLoadCompleteListener {
         entry.shouldShowLocation = oldEntry.shouldShowLocation;
         // Contact specific ringtone is obtained from local lookup.
         entry.contactRingtoneUri = oldEntry.contactRingtoneUri;
+        entry.originalPhoneNumber = oldEntry.originalPhoneNumber;
       }
 
       // If no image and it's a business, switch to using the default business avatar.

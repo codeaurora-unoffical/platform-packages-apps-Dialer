@@ -20,31 +20,29 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.design.widget.BaseTransientBottomBar.BaseCallback;
 import android.support.design.widget.Snackbar;
 import android.telephony.TelephonyManager;
 import android.view.View;
 import android.view.View.OnClickListener;
-import com.android.dialer.buildtype.BuildType;
-import com.android.dialer.common.Assert;
-import com.android.dialer.common.ConfigProvider;
-import com.android.dialer.common.ConfigProviderBindings;
 import com.android.dialer.common.LogUtil;
+import com.android.dialer.configprovider.ConfigProvider;
+import com.android.dialer.configprovider.ConfigProviderBindings;
 import com.android.dialer.enrichedcall.EnrichedCallCapabilities;
 import com.android.dialer.enrichedcall.EnrichedCallComponent;
 import com.android.dialer.enrichedcall.EnrichedCallManager;
 import com.android.dialer.logging.DialerImpression;
 import com.android.dialer.logging.Logger;
+import com.android.dialer.performancereport.PerformanceReport;
 import com.android.dialer.util.DialerUtils;
 import com.android.dialer.util.IntentUtil;
 
 /** Helper class to handle all post call actions. */
 public class PostCall {
 
-  private static final String KEY_POST_CALL_CALL_CONNECT_TIME = "post_call_call_connect_time";
   private static final String KEY_POST_CALL_CALL_DISCONNECT_TIME = "post_call_call_disconnect_time";
+  private static final String KEY_POST_CALL_CALL_CONNECT_TIME = "post_call_call_connect_time";
   private static final String KEY_POST_CALL_CALL_NUMBER = "post_call_call_number";
   private static final String KEY_POST_CALL_MESSAGE_SENT = "post_call_message_sent";
 
@@ -56,6 +54,8 @@ public class PostCall {
         promptUserToViewSentMessage(activity, rootView);
       } else if (shouldPromptUserToSendMessage(activity)) {
         promptUserToSendMessage(activity, rootView);
+      } else {
+        clear(activity);
       }
     }
   }
@@ -101,7 +101,7 @@ public class PostCall {
                 activity.getResources().getColor(R.color.dialer_snackbar_action_text_color));
     activeSnackbar.show();
     Logger.get(activity).logImpression(DialerImpression.Type.POST_CALL_PROMPT_USER_TO_SEND_MESSAGE);
-    PreferenceManager.getDefaultSharedPreferences(activity)
+    DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(activity)
         .edit()
         .remove(KEY_POST_CALL_CALL_DISCONNECT_TIME)
         .apply();
@@ -138,14 +138,14 @@ public class PostCall {
     activeSnackbar.show();
     Logger.get(activity)
         .logImpression(DialerImpression.Type.POST_CALL_PROMPT_USER_TO_VIEW_SENT_MESSAGE);
-    PreferenceManager.getDefaultSharedPreferences(activity)
+    DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(activity)
         .edit()
         .remove(KEY_POST_CALL_MESSAGE_SENT)
         .apply();
   }
 
   public static void onCallDisconnected(Context context, String number, long callConnectedMillis) {
-    PreferenceManager.getDefaultSharedPreferences(context)
+    DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(context)
         .edit()
         .putLong(KEY_POST_CALL_CALL_CONNECT_TIME, callConnectedMillis)
         .putLong(KEY_POST_CALL_CALL_DISCONNECT_TIME, System.currentTimeMillis())
@@ -154,17 +154,30 @@ public class PostCall {
   }
 
   public static void onMessageSent(Context context, String number) {
-    PreferenceManager.getDefaultSharedPreferences(context)
+    DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(context)
         .edit()
         .putString(KEY_POST_CALL_CALL_NUMBER, number)
         .putBoolean(KEY_POST_CALL_MESSAGE_SENT, true)
         .apply();
   }
 
+  /**
+   * Restart performance recording if there is a recent call (disconnect time to now is under
+   * threshold)
+   */
+  public static void restartPerformanceRecordingIfARecentCallExist(Context context) {
+    long disconnectTimeMillis =
+        DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(context)
+            .getLong(PostCall.KEY_POST_CALL_CALL_DISCONNECT_TIME, -1);
+    if (disconnectTimeMillis != -1 && PerformanceReport.isRecording()) {
+      PerformanceReport.startRecording();
+    }
+  }
+
   private static void clear(Context context) {
     activeSnackbar = null;
 
-    PreferenceManager.getDefaultSharedPreferences(context)
+    DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(context)
         .edit()
         .remove(KEY_POST_CALL_CALL_DISCONNECT_TIME)
         .remove(KEY_POST_CALL_CALL_NUMBER)
@@ -174,7 +187,8 @@ public class PostCall {
   }
 
   private static boolean shouldPromptUserToSendMessage(Context context) {
-    SharedPreferences manager = PreferenceManager.getDefaultSharedPreferences(context);
+    SharedPreferences manager =
+        DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(context);
     long disconnectTimeMillis = manager.getLong(KEY_POST_CALL_CALL_DISCONNECT_TIME, -1);
     long connectTimeMillis = manager.getLong(KEY_POST_CALL_CALL_CONNECT_TIME, -1);
 
@@ -192,30 +206,18 @@ public class PostCall {
   }
 
   private static boolean shouldPromptUserToViewSentMessage(Context context) {
-    return PreferenceManager.getDefaultSharedPreferences(context)
+    return DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(context)
         .getBoolean(KEY_POST_CALL_MESSAGE_SENT, false);
   }
 
   @Nullable
   private static String getPhoneNumber(Context context) {
-    return PreferenceManager.getDefaultSharedPreferences(context)
+    return DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(context)
         .getString(KEY_POST_CALL_CALL_NUMBER, null);
   }
 
   private static boolean isEnabled(Context context) {
-    @BuildType.Type int type = BuildType.get();
-    switch (type) {
-      case BuildType.BUGFOOD:
-      case BuildType.DOGFOOD:
-      case BuildType.FISHFOOD:
-      case BuildType.TEST:
-        return ConfigProviderBindings.get(context).getBoolean("enable_post_call", true);
-      case BuildType.RELEASE:
-        return ConfigProviderBindings.get(context).getBoolean("enable_post_call_prod", true);
-      default:
-        Assert.fail();
-        return false;
-    }
+    return ConfigProviderBindings.get(context).getBoolean("enable_post_call_prod", true);
   }
 
   private static boolean isSimReady(Context context) {

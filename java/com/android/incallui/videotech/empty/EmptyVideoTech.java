@@ -17,6 +17,11 @@
 package com.android.incallui.videotech.empty;
 
 import android.content.Context;
+<<<<<<< HEAD
+import android.telecom.InCallService.VideoCall;
+=======
+import android.support.annotation.Nullable;
+>>>>>>> 442c9b88edcdf780933c4c1f274021a3b48d2a4a
 import com.android.dialer.common.Assert;
 import com.android.incallui.video.protocol.VideoCallScreen;
 import com.android.incallui.video.protocol.VideoCallScreenDelegate;
@@ -56,6 +61,9 @@ public class EmptyVideoTech implements VideoTech {
   public void onCallStateChanged(Context context, int newState) {}
 
   @Override
+  public void onRemovedFromCallList() {}
+
+  @Override
   public int getSessionModificationState() {
     return SessionModificationState.NO_REQUEST;
   }
@@ -64,10 +72,21 @@ public class EmptyVideoTech implements VideoTech {
   public void upgradeToVideo() {}
 
   @Override
+  public void upgradeToVideo(int videoState) {}
+
+  @Override
+  public int getRequestedVideoState() {
+    return -1;
+  }
+
+  @Override
   public void acceptVideoRequest() {}
 
   @Override
   public void acceptVideoRequestAsAudio() {}
+
+  @Override
+  public void acceptVideoRequest(int videoState) {}
 
   @Override
   public void declineVideoRequest() {}
@@ -90,8 +109,11 @@ public class EmptyVideoTech implements VideoTech {
   public void unpause() {}
 
   @Override
-  public void setCamera(String cameraId) {}
+  public void setCamera(@Nullable String cameraId) {}
 
   @Override
   public void setDeviceOrientation(int rotation) {}
+
+  @Override
+  public VideoCall getVideoCall() {return null;}
 }

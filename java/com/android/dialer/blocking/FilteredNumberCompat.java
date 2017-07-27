@@ -270,12 +270,13 @@ public class FilteredNumberCompat {
     }
 
     // Great Wall blocking, must be primary user and the default or system dialer
-    // TODO: check that we're the system Dialer
+    // TODO(maxwelb): check that we're the system Dialer
     return TelecomUtil.isDefaultDialer(context)
         && safeBlockedNumbersContractCanCurrentUserBlockNumbers(context);
   }
 
-  static void setCanAttemptBlockOperationsForTest(boolean canAttempt) {
+  @VisibleForTesting(otherwise = VisibleForTesting.NONE)
+  public static void setCanAttemptBlockOperationsForTest(boolean canAttempt) {
     canAttemptBlockOperationsForTest = canAttempt;
   }
 

@@ -161,25 +161,16 @@ public class ImsVideoCallCallback extends VideoCall.Callback {
     }
   }
 
+  // In the vendor code rx_pause and rx_resume get triggered when the video player starts or stops
+  // playing the incoming video stream.  For the case where you're resuming a held call, its
+  // definitely a good signal to use to know that the video is resuming (though the video state
+  // should change to indicate its not paused in this case as well).  However, keep in mind you'll
+  // get these signals as well on carriers that don't support the video pause signalling (like TMO)
+  // so you want to ensure you don't send sessionModifyRequests with pause/resume based on these
+  // signals. Also, its technically possible to have a pause/resume if the video signal degrades.
   @Override
   public void onCallSessionEvent(int event) {
-    switch (event) {
-      case Connection.VideoProvider.SESSION_EVENT_RX_PAUSE:
-        LogUtil.i("ImsVideoCallCallback.onCallSessionEvent", "rx_pause");
-        break;
-      case Connection.VideoProvider.SESSION_EVENT_RX_RESUME:
-        LogUtil.i("ImsVideoCallCallback.onCallSessionEvent", "rx_resume");
-        break;
-      case Connection.VideoProvider.SESSION_EVENT_CAMERA_FAILURE:
-        LogUtil.i("ImsVideoCallCallback.onCallSessionEvent", "camera_failure");
-        break;
-      case Connection.VideoProvider.SESSION_EVENT_CAMERA_READY:
-        LogUtil.i("ImsVideoCallCallback.onCallSessionEvent", "camera_ready");
-        break;
-      default:
-        LogUtil.i("ImsVideoCallCallback.onCallSessionEvent", "unknown event = : " + event);
-        break;
-    }
+    listener.onCallSessionEvent(event);
   }
 
   @Override

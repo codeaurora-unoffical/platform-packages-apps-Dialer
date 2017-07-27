@@ -28,6 +28,7 @@ import android.provider.VoicemailContract.Voicemails;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.text.TextUtils;
+import com.android.dialer.common.LogUtil;
 import com.android.dialer.common.concurrent.AsyncTaskExecutor;
 import com.android.dialer.common.concurrent.AsyncTaskExecutors;
 import com.android.dialer.util.PermissionsUtil;
@@ -45,6 +46,7 @@ public class CallLogAsyncTaskUtil {
 
   public static void markVoicemailAsRead(
       @NonNull final Context context, @NonNull final Uri voicemailUri) {
+    LogUtil.enterBlock("CallLogAsyncTaskUtil.markVoicemailAsRead, voicemailUri: " + voicemailUri);
     if (sAsyncTaskExecutor == null) {
       initTaskExecutor();
     }
@@ -56,15 +58,17 @@ public class CallLogAsyncTaskUtil {
           public Void doInBackground(Void... params) {
             ContentValues values = new ContentValues();
             values.put(Voicemails.IS_READ, true);
-            context
-                .getContentResolver()
-                .update(voicemailUri, values, Voicemails.IS_READ + " = 0", null);
+            // "External" changes to the database will be automatically marked as dirty, but this
+            // voicemail might be from dialer so it need to be marked manually.
+            values.put(Voicemails.DIRTY, 1);
+            if (context
+                    .getContentResolver()
+                    .update(voicemailUri, values, Voicemails.IS_READ + " = 0", null)
+                > 0) {
+              uploadVoicemailLocalChangesToServer(context);
+            }
 
-            uploadVoicemailLocalChangesToServer(context);
-
-            Intent intent = new Intent(context, CallLogNotificationsService.class);
-            intent.setAction(CallLogNotificationsService.ACTION_MARK_NEW_VOICEMAILS_AS_OLD);
-            context.startService(intent);
+            CallLogNotificationsService.markAllNewVoicemailsAsOld(context);
             return null;
           }
         });
@@ -106,7 +110,8 @@ public class CallLogAsyncTaskUtil {
   }
 
   public static void markCallAsRead(@NonNull final Context context, @NonNull final long[] callIds) {
-    if (!PermissionsUtil.hasPhonePermissions(context)) {
+    if (!PermissionsUtil.hasPhonePermissions(context)
+        || !PermissionsUtil.hasCallLogWritePermissions(context)) {
       return;
     }
     if (sAsyncTaskExecutor == null) {

@@ -22,6 +22,7 @@ import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceScreen;
 import android.preference.SwitchPreference;
+import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.telecom.PhoneAccountHandle;
 import android.telephony.TelephonyManager;
@@ -29,9 +30,9 @@ import com.android.dialer.common.Assert;
 import com.android.dialer.logging.DialerImpression;
 import com.android.dialer.logging.Logger;
 import com.android.dialer.notification.NotificationChannelManager;
-import com.android.dialer.notification.NotificationChannelManager.Channel;
 import com.android.voicemail.VoicemailClient;
 import com.android.voicemail.VoicemailComponent;
+import com.android.voicemail.impl.SubscriptionInfoHelper;
 import com.android.voicemail.impl.OmtpVvmCarrierConfigHelper;
 import com.android.voicemail.impl.R;
 import com.android.voicemail.impl.VvmLog;
@@ -43,8 +44,7 @@ import com.android.voicemail.impl.sync.VvmAccountManager;
  */
 @TargetApi(VERSION_CODES.O)
 public class VoicemailSettingsFragment extends PreferenceFragment
-    implements Preference.OnPreferenceChangeListener,
-        VvmAccountManager.Listener {
+    implements Preference.OnPreferenceChangeListener, VvmAccountManager.Listener {
 
   private static final String TAG = "VmSettingsActivity";
 
@@ -56,6 +56,7 @@ public class VoicemailSettingsFragment extends PreferenceFragment
   private SwitchPreference autoArchiveSwitchPreference;
   private Preference voicemailChangePinPreference;
   private PreferenceScreen advancedSettings;
+  private SubscriptionInfoHelper subscriptionInfoHelper;
 
   @Override
   public void onCreate(Bundle icicle) {
@@ -63,6 +64,7 @@ public class VoicemailSettingsFragment extends PreferenceFragment
 
     phoneAccountHandle =
         Assert.isNotNull(getArguments().getParcelable(VoicemailClient.PARAM_PHONE_ACCOUNT_HANDLE));
+    subscriptionInfoHelper = new SubscriptionInfoHelper(getActivity(), phoneAccountHandle);
 
     omtpVvmCarrierConfigHelper = new OmtpVvmCarrierConfigHelper(getContext(), phoneAccountHandle);
   }
@@ -83,9 +85,8 @@ public class VoicemailSettingsFragment extends PreferenceFragment
 
     voicemailNotificationPreference =
         findPreference(getString(R.string.voicemail_notifications_key));
-    voicemailNotificationPreference.setIntent(
-        NotificationChannelManager.getInstance()
-            .getSettingsIntentForChannel(getContext(), Channel.VOICEMAIL, phoneAccountHandle));
+    voicemailNotificationPreference.setIntent(getNotificationSettingsIntent());
+
     voicemailNotificationPreference.setOnPreferenceClickListener(
         new OnPreferenceClickListener() {
           @Override
@@ -151,7 +152,7 @@ public class VoicemailSettingsFragment extends PreferenceFragment
 
     advancedSettings =
         (PreferenceScreen) findPreference(getString(R.string.voicemail_advanced_settings_key));
-    Intent advancedSettingsIntent = new Intent(TelephonyManager.ACTION_CONFIGURE_VOICEMAIL);
+    Intent advancedSettingsIntent = subscriptionInfoHelper.getConfiguringVoiceMailIntent();
     advancedSettingsIntent.putExtra(TelephonyManager.EXTRA_HIDE_PUBLIC_SETTINGS, true);
     advancedSettings.setIntent(advancedSettingsIntent);
     voicemailChangePinPreference.setOnPreferenceClickListener(
@@ -232,5 +233,13 @@ public class VoicemailSettingsFragment extends PreferenceFragment
     if (this.phoneAccountHandle.equals(phoneAccountHandle)) {
       updateChangePin();
     }
+  }
+
+  private Intent getNotificationSettingsIntent() {
+    String channelId =
+        NotificationChannelManager.getVoicemailChannelId(getContext(), phoneAccountHandle);
+    return new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+        .putExtra(Settings.EXTRA_CHANNEL_ID, channelId)
+        .putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
   }
 }

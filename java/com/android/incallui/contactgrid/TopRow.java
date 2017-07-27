@@ -19,10 +19,18 @@ package com.android.incallui.contactgrid;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.support.annotation.Nullable;
+import android.telephony.PhoneNumberUtils;
+import android.text.BidiFormatter;
+import android.text.TextDirectionHeuristics;
 import android.text.TextUtils;
 import com.android.dialer.common.Assert;
 import com.android.incallui.call.DialerCall.State;
 import com.android.incallui.incall.protocol.PrimaryCallState;
+<<<<<<< HEAD
+import com.android.incallui.QtiCallUtils;
+=======
+import com.android.incallui.incall.protocol.PrimaryInfo;
+>>>>>>> 442c9b88edcdf780933c4c1f274021a3b48d2a4a
 import com.android.incallui.videotech.utils.SessionModificationState;
 import com.android.incallui.videotech.utils.VideoUtils;
 
@@ -55,7 +63,7 @@ public class TopRow {
 
   private TopRow() {}
 
-  public static Info getInfo(Context context, PrimaryCallState state) {
+  public static Info getInfo(Context context, PrimaryCallState state, PrimaryInfo primaryInfo) {
     CharSequence label = null;
     Drawable icon = state.connectionIcon;
     boolean labelIsSingleLine = true;
@@ -73,6 +81,11 @@ public class TopRow {
         labelIsSingleLine = false;
       } else {
         label = getLabelForIncoming(context, state);
+        // Show phone number if it's not displayed in name (center row) or location field (bottom
+        // row).
+        if (shouldShowNumber(primaryInfo)) {
+          label = TextUtils.concat(label, " ", spanDisplayNumber(primaryInfo.number));
+        }
       }
     } else if (VideoUtils.hasSentVideoUpgradeRequest(state.sessionModificationState)
         || VideoUtils.hasReceivedVideoUpgradeRequest(state.sessionModificationState)) {
@@ -85,6 +98,8 @@ public class TopRow {
       label = getLabelForDialing(context, state);
     } else if (state.state == State.ACTIVE && state.isRemotelyHeld) {
       label = context.getString(R.string.incall_remotely_held);
+    } else if (state.state == State.ACTIVE && shouldShowNumber(primaryInfo)) {
+      label = spanDisplayNumber(primaryInfo.number);
     } else {
       // Video calling...
       // [Wi-Fi icon] Starbucks Wi-Fi
@@ -94,9 +109,40 @@ public class TopRow {
     return new Info(label, icon, labelIsSingleLine);
   }
 
+  private static CharSequence spanDisplayNumber(String displayNumber) {
+    return PhoneNumberUtils.createTtsSpannable(
+        BidiFormatter.getInstance().unicodeWrap(displayNumber, TextDirectionHeuristics.LTR));
+  }
+
+  private static boolean shouldShowNumber(PrimaryInfo primaryInfo) {
+    if (primaryInfo.nameIsNumber) {
+      return false;
+    }
+    if (primaryInfo.location == null) {
+      return false;
+    }
+    if (TextUtils.isEmpty(primaryInfo.number)) {
+      return false;
+    }
+    return true;
+  }
+
   private static CharSequence getLabelForIncoming(Context context, PrimaryCallState state) {
-    if (state.isVideoCall) {
+<<<<<<< HEAD
+    if (state.isConference) {
+      if (isAccount(state)) {
+        return context.getString(R.string.incoming_conf_via_template, state.connectionLabel);
+      } else if (state.isVideoCall) {
+        return context.getString(R.string.card_title_incoming_video_conf_call);
+      }else {
+        return context.getString(R.string.card_title_incoming_conf_call);
+      }
+    } else if (state.isVideoCall) {
       return getLabelForIncomingVideo(context, state.isWifi);
+=======
+    if (state.isVideoCall) {
+      return getLabelForIncomingVideo(context, state.sessionModificationState, state.isWifi);
+>>>>>>> 442c9b88edcdf780933c4c1f274021a3b48d2a4a
     } else if (state.isWifi && !TextUtils.isEmpty(state.connectionLabel)) {
       return state.connectionLabel;
     } else if (isAccount(state)) {
@@ -108,12 +154,27 @@ public class TopRow {
     }
   }
 
+<<<<<<< HEAD
   private static CharSequence getLabelForIncomingVideo(Context context, boolean isWifi) {
-    if (isWifi) {
-      return context.getString(R.string.contact_grid_incoming_wifi_video_call);
+      return isWifi ? QtiCallUtils.getLabelForIncomingWifiVideoCall(context) :
+          QtiCallUtils.getLabelForIncomingVideoCall(context);
+=======
+  private static CharSequence getLabelForIncomingVideo(
+      Context context, @SessionModificationState int sessionModificationState, boolean isWifi) {
+    if (sessionModificationState == SessionModificationState.RECEIVED_UPGRADE_TO_VIDEO_REQUEST) {
+      if (isWifi) {
+        return context.getString(R.string.contact_grid_incoming_wifi_video_request);
+      } else {
+        return context.getString(R.string.contact_grid_incoming_video_request);
+      }
     } else {
-      return context.getString(R.string.contact_grid_incoming_video_call);
+      if (isWifi) {
+        return context.getString(R.string.contact_grid_incoming_wifi_video_call);
+      } else {
+        return context.getString(R.string.contact_grid_incoming_video_call);
+      }
     }
+>>>>>>> 442c9b88edcdf780933c4c1f274021a3b48d2a4a
   }
 
   private static CharSequence getLabelForDialing(Context context, PrimaryCallState state) {
@@ -154,7 +215,7 @@ public class TopRow {
       case SessionModificationState.UPGRADE_TO_VIDEO_REQUEST_TIMED_OUT:
         return context.getString(R.string.incall_video_call_request_timed_out);
       case SessionModificationState.RECEIVED_UPGRADE_TO_VIDEO_REQUEST:
-        return getLabelForIncomingVideo(context, state.isWifi);
+        return getLabelForIncomingVideo(context, state.sessionModificationState, state.isWifi);
       case SessionModificationState.NO_REQUEST:
       default:
         Assert.fail();

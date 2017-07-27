@@ -495,7 +495,7 @@ public class SurfaceViewVideoCallFragment extends Fragment
   }
 
   private View[] getAllPreviewRelatedViews() {
-    return new View[] {previewRoot};
+    return new View[] {previewRoot, mutePreviewOverlay};
   }
 
   private int getOffsetTop(View view) {
@@ -644,12 +644,6 @@ public class SurfaceViewVideoCallFragment extends Fragment
     updateVideoOffViews();
   }
 
-  /**
-   * This method scales the video feed inside the texture view, it doesn't change the texture view's
-   * size. In the old UI we would change the view size to match the aspect ratio of the video. In
-   * the new UI the view is always square (with the circular clip) so we have to do additional work
-   * to make sure the non-square video doesn't look squished.
-   */
   @Override
   public void onLocalVideoDimensionsChanged() {
     LogUtil.i("SurfaceViewVideoCallFragment.onLocalVideoDimensionsChanged", null);
@@ -724,6 +718,10 @@ public class SurfaceViewVideoCallFragment extends Fragment
   @Override
   public Fragment getVideoCallScreenFragment() {
     return this;
+  }
+
+  @Override
+  public void onRequestReadStoragePermission() {
   }
 
   @Override
@@ -834,6 +832,9 @@ public class SurfaceViewVideoCallFragment extends Fragment
   }
 
   @Override
+  public void onAudioRouteSelectorDismiss() {}
+
+  @Override
   public void setPrimary(@NonNull PrimaryInfo primaryInfo) {
     LogUtil.i("SurfaceViewVideoCallFragment.setPrimary", primaryInfo.toString());
     contactGridManager.setPrimary(primaryInfo);
@@ -914,6 +915,11 @@ public class SurfaceViewVideoCallFragment extends Fragment
   @Override
   public void onInCallScreenDialpadVisibilityChange(boolean isShowing) {
     LogUtil.i("SurfaceViewVideoCallFragment.onInCallScreenDialpadVisibilityChange", null);
+  }
+
+  @Override
+  public void onInCallShowDialpad(boolean isShown) {
+    LogUtil.i("SurfaceViewVideoCallFragment.onInCallShowDialpad", null);
   }
 
   @Override

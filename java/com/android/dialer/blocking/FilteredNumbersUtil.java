@@ -22,12 +22,13 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.os.AsyncTask;
-import android.preference.PreferenceManager;
 import android.provider.ContactsContract.CommonDataKinds.Phone;
 import android.provider.ContactsContract.Contacts;
 import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
+import android.support.v4.os.BuildCompat;
+import android.support.v4.os.UserManagerCompat;
 import android.telephony.PhoneNumberUtils;
 import android.text.TextUtils;
 import android.widget.Toast;
@@ -35,17 +36,16 @@ import com.android.dialer.blocking.FilteredNumberAsyncQueryHandler.OnHasBlockedN
 import com.android.dialer.common.LogUtil;
 import com.android.dialer.logging.InteractionEvent;
 import com.android.dialer.logging.Logger;
-import com.android.dialer.notification.NotificationChannelManager;
-import com.android.dialer.notification.NotificationChannelManager.Channel;
+import com.android.dialer.notification.NotificationChannelId;
 import com.android.dialer.util.DialerUtils;
 import com.android.dialer.util.PermissionsUtil;
+import java.util.concurrent.TimeUnit;
 
 /** Utility to help with tasks related to filtered numbers. */
 public class FilteredNumbersUtil {
 
   public static final String CALL_BLOCKING_NOTIFICATION_TAG = "call_blocking";
-  public static final int CALL_BLOCKING_DISABLED_BY_EMERGENCY_CALL_NOTIFICATION_ID =
-      R.id.notification_call_blocking_disabled_by_emergency_call;
+  public static final int CALL_BLOCKING_DISABLED_BY_EMERGENCY_CALL_NOTIFICATION_ID = 10;
   // Pref key for storing the time of end of the last emergency call in milliseconds after epoch.\
   @VisibleForTesting
   public static final String LAST_EMERGENCY_CALL_MS_PREF_KEY = "last_emergency_call_ms";
@@ -54,7 +54,7 @@ public class FilteredNumbersUtil {
   protected static final String NOTIFIED_CALL_BLOCKING_DISABLED_BY_EMERGENCY_CALL_PREF_KEY =
       "notified_call_blocking_disabled_by_emergency_call";
   // Disable incoming call blocking if there was a call within the past 2 days.
-  private static final long RECENT_EMERGENCY_CALL_THRESHOLD_MS = 1000 * 60 * 60 * 24 * 2;
+  static final long RECENT_EMERGENCY_CALL_THRESHOLD_MS = TimeUnit.DAYS.toMillis(2);
 
   /**
    * Used for testing to specify the custom threshold value, in milliseconds for whether an
@@ -210,13 +210,15 @@ public class FilteredNumbersUtil {
       return;
     }
 
-    PreferenceManager.getDefaultSharedPreferences(context)
+    DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(context)
         .edit()
         .putLong(LAST_EMERGENCY_CALL_MS_PREF_KEY, System.currentTimeMillis())
         .putBoolean(NOTIFIED_CALL_BLOCKING_DISABLED_BY_EMERGENCY_CALL_PREF_KEY, false)
         .apply();
 
-    maybeNotifyCallBlockingDisabled(context);
+    if (UserManagerCompat.isUserUnlocked(context)) {
+      maybeNotifyCallBlockingDisabled(context);
+    }
   }
 
   public static void maybeNotifyCallBlockingDisabled(final Context context) {
@@ -225,7 +227,7 @@ public class FilteredNumbersUtil {
       return;
     }
     // Skip if the user has already received a notification for the most recent emergency call.
-    if (PreferenceManager.getDefaultSharedPreferences(context)
+    if (DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(context)
         .getBoolean(NOTIFIED_CALL_BLOCKING_DISABLED_BY_EMERGENCY_CALL_PREF_KEY, false)) {
       return;
     }
@@ -251,7 +253,9 @@ public class FilteredNumbersUtil {
                         context.getString(R.string.call_blocking_disabled_notification_text))
                     .setAutoCancel(true);
 
-            NotificationChannelManager.applyChannel(builder, context, Channel.DEFAULT, null);
+            if (BuildCompat.isAtLeastO()) {
+              builder.setChannelId(NotificationChannelId.DEFAULT);
+            }
             builder.setContentIntent(
                 PendingIntent.getActivity(
                     context,
@@ -265,7 +269,7 @@ public class FilteredNumbersUtil {
                 builder.build());
 
             // Record that the user has been notified for this emergency call.
-            PreferenceManager.getDefaultSharedPreferences(context)
+            DialerUtils.getDefaultSharedPreferenceForDeviceProtectedStorageContext(context)
                 .edit()
                 .putBoolean(NOTIFIED_CALL_BLOCKING_DISABLED_BY_EMERGENCY_CALL_PREF_KEY, true)
                 .apply();

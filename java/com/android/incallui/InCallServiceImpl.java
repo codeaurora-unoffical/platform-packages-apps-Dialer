@@ -22,6 +22,7 @@ import android.os.IBinder;
 import android.telecom.Call;
 import android.telecom.CallAudioState;
 import android.telecom.InCallService;
+import com.android.dialer.blocking.FilteredNumberAsyncQueryHandler;
 import com.android.incallui.audiomode.AudioModeProvider;
 import com.android.incallui.call.CallList;
 import com.android.incallui.call.ExternalCallList;
@@ -34,6 +35,8 @@ import com.android.incallui.call.TelecomAdapter;
  * service triggering InCallActivity (via CallList) to finish soon after.
  */
 public class InCallServiceImpl extends InCallService {
+
+  private ReturnToCallController returnToCallController;
 
   @Override
   public void onCallAudioStateChanged(CallAudioState audioState) {
@@ -66,17 +69,21 @@ public class InCallServiceImpl extends InCallService {
     final ContactInfoCache contactInfoCache = ContactInfoCache.getInstance(context);
     InCallPresenter.getInstance()
         .setUp(
-            getApplicationContext(),
+            context,
             CallList.getInstance(),
             new ExternalCallList(),
             new StatusBarNotifier(context, contactInfoCache),
             new ExternalCallNotifier(context, contactInfoCache),
             contactInfoCache,
             new ProximitySensor(
-                context, AudioModeProvider.getInstance(), new AccelerometerListener(context)));
+                context, AudioModeProvider.getInstance(), new AccelerometerListener(context)),
+            new FilteredNumberAsyncQueryHandler(context));
     InCallPresenter.getInstance().onServiceBind();
     InCallPresenter.getInstance().maybeStartRevealAnimation(intent);
     TelecomAdapter.getInstance().setInCallService(this);
+    if (ReturnToCallController.isEnabled(this)) {
+      returnToCallController = new ReturnToCallController(this);
+    }
 
     return super.onBind(intent);
   }
@@ -96,5 +103,9 @@ public class InCallServiceImpl extends InCallService {
     // Tear down the InCall system
     TelecomAdapter.getInstance().clearInCallService();
     InCallPresenter.getInstance().tearDown();
+    if (returnToCallController != null) {
+      returnToCallController.tearDown();
+      returnToCallController = null;
+    }
   }
 }
