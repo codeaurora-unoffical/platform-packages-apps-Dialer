@@ -40,6 +40,7 @@ public class ImsVideoTech implements VideoTech {
   private @SessionModificationState int sessionModificationState =
       SessionModificationState.NO_REQUEST;
   private int previousVideoState = VideoProfile.STATE_AUDIO_ONLY;
+  private int mUpgradeToVideoState = -1;
   private boolean paused = false;
   private VideoCall mRegisteredVideoCall;
 
@@ -117,13 +118,21 @@ public class ImsVideoTech implements VideoTech {
       setSessionModificationState(SessionModificationState.NO_REQUEST);
     }
 
-    // Determines if a received upgrade to video request should be cancelled. This can happen if
-    // another InCall UI responds to the upgrade to video request.
     int newVideoState = call.getDetails().getVideoState();
-    if (newVideoState != previousVideoState
-        && sessionModificationState == SessionModificationState.RECEIVED_UPGRADE_TO_VIDEO_REQUEST) {
-      LogUtil.i("ImsVideoTech.onCallStateChanged", "cancelling upgrade notification");
-      setSessionModificationState(SessionModificationState.NO_REQUEST);
+    LogUtil.v("ImsVideoTech.onCallStateChanged","previousVideoState = " +
+        previousVideoState + " newVideoState = " + newVideoState);
+    if (newVideoState != previousVideoState) {
+      if (paused && VideoProfile.isPaused(previousVideoState)
+          && !VideoProfile.isPaused(newVideoState)) {
+        paused = false;
+      }
+
+      // Determines if a received upgrade to video request should be cancelled. This can happen if
+      // another InCall UI responds to the upgrade to video request.
+      if (sessionModificationState == SessionModificationState.RECEIVED_UPGRADE_TO_VIDEO_REQUEST) {
+        LogUtil.i("ImsVideoTech.onCallStateChanged", "cancelling upgrade notification");
+        setSessionModificationState(SessionModificationState.NO_REQUEST);
+      }
     }
     previousVideoState = newVideoState;
   }
@@ -134,9 +143,14 @@ public class ImsVideoTech implements VideoTech {
   }
 
   void setSessionModificationState(@SessionModificationState int state) {
+    LogUtil.i(
+        "ImsVideoTech.setSessionModificationState", "%d -> %d", sessionModificationState, state);
+
+    if (state == SessionModificationState.NO_REQUEST) {
+      mUpgradeToVideoState = -1;
+    }
+
     if (state != sessionModificationState) {
-      LogUtil.i(
-          "ImsVideoTech.setSessionModificationState", "%d -> %d", sessionModificationState, state);
       sessionModificationState = state;
       listener.onSessionModificationStateChanged();
     }
@@ -145,6 +159,7 @@ public class ImsVideoTech implements VideoTech {
   @Override
   public void upgradeToVideo() {
     LogUtil.enterBlock("ImsVideoTech.upgradeToVideo");
+    mUpgradeToVideoState = VideoProfile.STATE_BIDIRECTIONAL;
     int unpausedVideoState = getUnpausedVideoState(call.getDetails().getVideoState());
     call.getVideoCall()
         .sendSessionModifyRequest(
@@ -157,6 +172,7 @@ public class ImsVideoTech implements VideoTech {
   @Override
   public void upgradeToVideo(int videoState) {
     LogUtil.i("ImsVideoTech.upgradeToVideo", "videostate = " + videoState);
+    mUpgradeToVideoState = videoState;
     int unpausedVideoState = getUnpausedVideoState(videoState);
     call.getVideoCall()
         .sendSessionModifyRequest(
@@ -279,17 +295,22 @@ public class ImsVideoTech implements VideoTech {
 
   @Override
   public int getRequestedVideoState() {
-      if (callback == null) {
-        LogUtil.w("ImsVideoTech.getRequestedVideoState", "callback is null");
-        return VideoProfile.STATE_AUDIO_ONLY;
-      }
-      return callback.getRequestedVideoState();
+    if (callback == null) {
+      LogUtil.w("ImsVideoTech.getRequestedVideoState", "callback is null");
+      return VideoProfile.STATE_AUDIO_ONLY;
+    }
+    return callback.getRequestedVideoState();
+  }
+
+  @Override
+  public int getUpgradeToVideoState() {
+    return mUpgradeToVideoState;
   }
 
   private boolean canPause() {
     return call.getDetails().can(Details.CAPABILITY_CAN_PAUSE_VIDEO)
         && call.getState() == Call.STATE_ACTIVE
-        && isTransmitting();
+        && isTransmittingOrReceiving();
   }
 
   public static int getUnpausedVideoState(int videoState) {

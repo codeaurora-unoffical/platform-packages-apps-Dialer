@@ -493,7 +493,7 @@ public class CallCardPresenter
           .setCallState(
               new PrimaryCallState(
                   mPrimary.getState(),
-                  mPrimary.isVideoCall(),
+                  !QtiCallUtils.hasVideoCrbtVoLteCall(mPrimary) && mPrimary.isVideoCall(),
                   mPrimary.getVideoTech().getSessionModificationState(),
                   mPrimary.getDisconnectCause(),
                   label,
@@ -1074,6 +1074,11 @@ public class CallCardPresenter
 
   private boolean isPrimaryCallActive() {
     return mPrimary != null && mPrimary.getState() == DialerCall.State.ACTIVE;
+  }
+
+  @Override
+  public void onSessionModificationStateChange(DialerCall call) {
+   //No-op
   }
 
   private String getConferenceString(DialerCall call) {
