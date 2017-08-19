@@ -56,7 +56,7 @@ public class CallDetailsEntryViewHolder extends ViewHolder {
 
   private final ImageView multimediaImage;
 
-  // TODO(maxwelb): Display this when location is stored - b/36160042
+  // TODO: Display this when location is stored - b/36160042
   @SuppressWarnings("unused")
   private final TextView multimediaAttachmentsNumber;
 
