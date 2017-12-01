@@ -776,7 +776,6 @@ public class InCallPresenter implements CallList.Listener {
     } else {
       wakeUpScreen();
     }
-    BottomSheetHelper.getInstance().dismissBottomSheet();
 
     if (mInCallActivity != null) {
       // Re-evaluate which fragment is being shown.
