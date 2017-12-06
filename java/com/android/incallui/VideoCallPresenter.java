@@ -1285,6 +1285,10 @@ public class VideoCallPresenter
       return;
     }
 
+    if (shallTransmitStaticImage()) {
+      setPauseImage(call.getVideoCall());
+    }
+
     if (mPreviewSurfaceState == PreviewSurfaceState.NONE) {
       LogUtil.w("VideoCallPresenter.onCameraDimensionsChange",
           "capabilities received when camera is OFF.");
@@ -1294,10 +1298,6 @@ public class VideoCallPresenter
     mPreviewSurfaceState = PreviewSurfaceState.CAPABILITIES_RECEIVED;
 
     changePreviewDimensions(width, height);
-
-    if (shallTransmitStaticImage()) {
-      setPauseImage(call.getVideoCall());
-    }
 
     // Check if the preview surface is ready yet; if it is, set it on the {@code VideoCall}.
     // If it not yet ready, it will be set when when creation completes.
