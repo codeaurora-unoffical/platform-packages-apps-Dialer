@@ -40,6 +40,8 @@ import com.android.dialer.util.CallUtil;
 import com.android.dialer.util.DialerUtils;
 import com.android.dialer.util.IntentUtil;
 import com.android.incallui.QtiCallUtils;
+import com.android.voicemail.impl.SubscriptionInfoHelper;
+import org.codeaurora.ims.utils.QtiImsExtUtils;
 
 /** ViewHolder for call entries in {@link CallDetailsActivity}. */
 public class CallDetailsEntryViewHolder extends ViewHolder {
@@ -93,7 +95,17 @@ public class CallDetailsEntryViewHolder extends ViewHolder {
     boolean isPulledCall =
         (entry.getFeatures() & Calls.FEATURES_PULLED_EXTERNALLY)
             == Calls.FEATURES_PULLED_EXTERNALLY;
-    boolean callDurationEnabled = QtiCallUtils.isConferenceDialerEnabled(context);
+
+    boolean  is4GConferenceEnabledSub = false;
+    SubscriptionInfoHelper subInfo = new SubscriptionInfoHelper(
+        context, entry.getAccountId());
+    int slotId = subInfo.getSimSlotIndex();
+    if (subInfo.hasSubId()) {
+      is4GConferenceEnabledSub = QtiImsExtUtils.isCarrierConfigEnabled(
+          slotId, context, "config_enable_conference_dialer");
+      LogUtil.i("CallDetailsEntryViewHolder.setCallDetails",
+          "is4GConferenceEnabledSub: " + is4GConferenceEnabledSub);
+    }
 
     callTime.setTextColor(getColorForCallType(context, callType));
     callTypeIcon.clear();
@@ -105,7 +117,7 @@ public class CallDetailsEntryViewHolder extends ViewHolder {
 
     callTypeText.setText(callTypeHelper.getCallTypeText(callType, isVideoCall, isPulledCall));
     callTime.setText(CallEntryFormatter.formatDate(context, entry.getDate()));
-    if (CallTypeHelper.isMissedCallType(callType) || callDurationEnabled) {
+    if (CallTypeHelper.isMissedCallType(callType) || is4GConferenceEnabledSub) {
       callDuration.setVisibility(View.GONE);
     } else {
       callDuration.setVisibility(View.VISIBLE);
