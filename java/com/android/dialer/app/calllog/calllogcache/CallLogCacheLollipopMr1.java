@@ -45,7 +45,8 @@ class CallLogCacheLollipopMr1 extends CallLogCache {
   final Map<Pair<PhoneAccountHandle, CharSequence>, Boolean> mVoicemailQueryCache =
       new ConcurrentHashMap<>();
 
-  private final Map<PhoneAccountHandle, String> mPhoneAccountLabelCache = new ArrayMap<>();
+  private final Map<PhoneAccountHandle, String> mPhoneAccountLabelCache =
+      new ConcurrentHashMap<>();
   private final Map<PhoneAccountHandle, Integer> mPhoneAccountColorCache = new ArrayMap<>();
   private final Map<PhoneAccountHandle, Boolean> mPhoneAccountCallWithNoteCache = new ArrayMap<>();
 
