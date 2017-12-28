@@ -577,8 +577,10 @@ public class CallButtonPresenter extends Presenter<CallButtonPresenter.CallButto
         ui.showButton(BUTTON_DOWNGRADE_TO_AUDIO, showDowngradeToAudio && !useExt);
         Log.v(this, "updateButtonsState sIsHideMe: " + sIsHideMe);
         ui.setHideMe(sIsHideMe);
-        // show switch camera button only if video call is NOT in hideme mode
-        ui.showButton(BUTTON_SWITCH_CAMERA, isVideo && !sIsHideMe);
+        // show switch camera button only if video call is NOT in hideme/Rx mode
+        final boolean isRxVideoCall = !VideoUtils.isBidirectionalVideoCall(call)
+            &&  VideoProfile.isReceptionEnabled(call.getVideoState());
+        ui.showButton(BUTTON_SWITCH_CAMERA, isVideo && !sIsHideMe && !isRxVideoCall);
         // show hide me button only for active video calls
         ui.showButton(BUTTON_HIDE_ME, isCallActive && isVideo &&
                 QtiCallUtils.shallTransmitStaticImage(getUi().getContext()));

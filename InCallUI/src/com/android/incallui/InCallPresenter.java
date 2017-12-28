@@ -1896,6 +1896,12 @@ public class InCallPresenter implements CallList.Listener,
             Log.e(this, "InCallActivity is null. Can't set requested orientation.");
             return false;
         }
+        Call call = mCallList.getOutgoingCall();
+        if (call != null && (QtiCallUtils.isVideoCrbtVtCall(mContext, call)
+                    || QtiCallUtils.isVideoCrbtVoLteCall(call))) {
+            Log.d(this, "Unlike orientation change for color ring");
+            return false;
+        }
 
         mInCallActivity.setRequestedOrientation(orientation);
         mInCallActivity.enableInCallOrientationEventListener(

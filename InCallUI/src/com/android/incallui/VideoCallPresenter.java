@@ -1805,11 +1805,13 @@ public class VideoCallPresenter extends Presenter<VideoCallPresenter.VideoCallUi
     }
 
     /**
-     * Hide preview window if it is a VT conference call
+     * Hide preview window if it is a VT conference call or Video Rx only
      */
     private boolean shallHidePreview(boolean isConf, int videoState) {
-        return VideoProfile.isBidirectional(videoState) && isConf
-                && QtiImsExtUtils.shallHidePreviewInVtConference(mContext);
+        return (VideoProfile.isBidirectional(videoState) && isConf
+                && QtiImsExtUtils.shallHidePreviewInVtConference(mContext))
+            || (VideoProfile.isReceptionEnabled(videoState)
+                && !VideoProfile.isBidirectional(videoState));
     }
 
     private boolean isConfCall() {
