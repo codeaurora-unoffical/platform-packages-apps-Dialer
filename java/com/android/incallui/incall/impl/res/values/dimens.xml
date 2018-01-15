@@ -27,7 +27,7 @@
   <dimen name="incall_window_margin_horizontal">24dp</dimen>
 
   <bool name="incall_dialpad_allowed">false</bool>
-  <integer name="incall_num_rows">0</integer>
+  <integer name="incall_num_rows">2</integer>
 
   <dimen name="paginator_dot_radius">5dp</dimen>
   <dimen name="paginator_dots_separation">8dp</dimen>
