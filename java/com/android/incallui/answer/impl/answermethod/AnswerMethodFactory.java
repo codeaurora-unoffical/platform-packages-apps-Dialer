@@ -47,6 +47,7 @@ public class AnswerMethodFactory {
 
   private static boolean needTwoButton(@NonNull Activity activity) {
     return AccessibilityUtil.isTouchExplorationEnabled(activity)
-        || ActivityCompat.isInMultiWindowMode(activity);
+        || ActivityCompat.isInMultiWindowMode(activity)
+        || activity.getResources().getBoolean(R.bool.need_show_two_button);
   }
 }
