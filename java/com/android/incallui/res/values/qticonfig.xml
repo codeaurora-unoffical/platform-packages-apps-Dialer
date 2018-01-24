@@ -29,4 +29,6 @@
 <resources>
     <!-- Determines UI extensions for video calls should be used. -->
     <bool name="video_call_use_ext">true</bool>
+    <!-- Determines incall UI for two button should be used. -->
+    <bool name="need_show_two_button">true</bool>
 </resources>
