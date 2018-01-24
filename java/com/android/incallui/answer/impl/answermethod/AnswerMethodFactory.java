@@ -58,6 +58,8 @@ public class AnswerMethodFactory {
       return true;
     }
 
-    return AccessibilityUtil.isTouchExplorationEnabled(activity) || activity.isInMultiWindowMode();
+    return AccessibilityUtil.isTouchExplorationEnabled(activity) 
+        || activity.isInMultiWindowMode()
+        || activity.getResources().getBoolean(R.bool.need_show_two_button);
   }
 }
