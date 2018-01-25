@@ -17,4 +17,6 @@
 
 <resources>
   <dimen name="incall_avatar_size">88dp</dimen>
+
+  <integer name="incall_num_rows">2</integer>
 </resources>
