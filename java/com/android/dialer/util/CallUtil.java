@@ -68,7 +68,7 @@ public class CallUtil {
    * @return A bit-mask describing the current video capabilities.
    */
   public static int getVideoCallingAvailability(Context context) {
-    if (!PermissionsUtil.hasPermission(context, android.Manifest.permission.READ_PHONE_STATE)
+    /*if (!PermissionsUtil.hasPermission(context, android.Manifest.permission.READ_PHONE_STATE)
         || !CompatUtils.isVideoCompatible()) {
       return VIDEO_CALLING_DISABLED;
     }
@@ -94,7 +94,7 @@ public class CallUtil {
           return videoCapabilities;
         }
       }
-    }
+    }*/
     return VIDEO_CALLING_DISABLED;
   }
 
