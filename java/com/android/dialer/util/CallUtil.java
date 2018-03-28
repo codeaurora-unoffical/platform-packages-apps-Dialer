@@ -64,7 +64,7 @@ public class CallUtil {
    */
   @SuppressLint("MissingPermission")
   public static int getVideoCallingAvailability(Context context) {
-    if (!PermissionsUtil.hasPermission(context, android.Manifest.permission.READ_PHONE_STATE)) {
+    /*if (!PermissionsUtil.hasPermission(context, android.Manifest.permission.READ_PHONE_STATE)) {
       return VIDEO_CALLING_DISABLED;
     }
     TelecomManager telecommMgr = (TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
@@ -84,7 +84,7 @@ public class CallUtil {
           return videoCapabilities;
         }
       }
-    }
+    }*/
     return VIDEO_CALLING_DISABLED;
   }
 
