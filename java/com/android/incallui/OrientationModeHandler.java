@@ -28,6 +28,7 @@
 
 package com.android.incallui;
 
+import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.telecom.VideoProfile;
@@ -59,6 +60,7 @@ public class OrientationModeHandler implements
 
     private int mVideoState = VideoProfile.STATE_AUDIO_ONLY;
 
+    private Context mContext;
     /**
      * Returns a singleton instance of {@class OrientationModeHandler}
      */
@@ -79,7 +81,8 @@ public class OrientationModeHandler implements
      * Handles set up of the {@class OrientationModeHandler}. Registers primary call tracker to
      * listen to call state changes and registers this class to listen to call details changes.
      */
-    public void setUp() {
+    public void setUp(Context context) {
+        mContext = context;
         mPrimaryCallTracker = new PrimaryCallTracker();
         InCallPresenter.getInstance().addListener(mPrimaryCallTracker);
         InCallPresenter.getInstance().addIncomingCallListener(mPrimaryCallTracker);
@@ -179,6 +182,11 @@ public class OrientationModeHandler implements
      * {@link ActivityInfo#ScreenOrientation}
      */
     private void onScreenOrientationChanged(DialerCall call, int orientation) {
+        if (QtiCallUtils.hasVideoCrbtVoLteCall(mContext, call)
+                || QtiCallUtils.hasVideoCrbtVtCall(mContext)) {
+            Log.d(this, "onScreenOrientationChanged : rotation should not work for CRBT.");
+            return;
+        }
         Log.d(this, "onScreenOrientationChanged: Call : " + call + " screen orientation = " +
                 orientation);
         if (mPrimaryCallTracker != null && !mPrimaryCallTracker.isPrimaryCall(call)) {

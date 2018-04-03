@@ -386,7 +386,7 @@ public class InCallPresenter implements CallList.Listener {
     addDetailsListener(CallSubstateNotifier.getInstance());
     CallList.getInstance().addListener(CallSubstateNotifier.getInstance());
     InCallZoomController.getInstance().setUp(mContext);
-    OrientationModeHandler.getInstance().setUp();
+    OrientationModeHandler.getInstance().setUp(mContext);
     addDetailsListener(SessionModificationCauseNotifier.getInstance());
 
     LogUtil.d("InCallPresenter.setUp", "Finished InCallPresenter.setUp");
