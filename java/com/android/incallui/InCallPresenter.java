@@ -21,6 +21,7 @@ import android.content.Intent;
 import android.graphics.Point;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.PersistableBundle;
 import android.os.PowerManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -32,6 +33,7 @@ import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telecom.VideoProfile;
+import android.telephony.CarrierConfigManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.view.Window;
@@ -264,6 +266,7 @@ public class InCallPresenter implements CallList.Listener {
   private ThemeColorManager mThemeColorManager;
   private VideoSurfaceTexture mLocalVideoSurfaceTexture;
   private VideoSurfaceTexture mRemoteVideoSurfaceTexture;
+  private CarrierConfigManager mCarrierConfigManager;
 
   /** Inaccessible constructor. Must use getRunningInstance() to get this singleton. */
   @VisibleForTesting
@@ -896,6 +899,15 @@ public class InCallPresenter implements CallList.Listener {
     }
 
     return newState;
+  }
+
+  public boolean getConfigItem(int subId, String key) {
+      PersistableBundle carrierConfig = getCarrierConfigManager().getConfigForSubId(subId);
+      if (carrierConfig == null) {
+          Log.d(this, "getConfigItem: Empty carrier config.");
+          return false;
+      }
+      return carrierConfig.getBoolean(key);
   }
 
   public boolean isBoundAndWaitingForOutgoingCall() {
@@ -1760,6 +1772,17 @@ public class InCallPresenter implements CallList.Listener {
           "InCallPresenter.setActivity", "Setting a second activity before destroying the first.");
     }
     updateActivity(inCallActivity);
+  }
+
+  /**
+   * @return An instance of mCarrierConfigManager.
+   */
+  public CarrierConfigManager getCarrierConfigManager() {
+      if (mCarrierConfigManager == null) {
+          mCarrierConfigManager = (CarrierConfigManager)
+              mContext.getSystemService(Context.CARRIER_CONFIG_SERVICE);
+      }
+       return mCarrierConfigManager;
   }
 
   ExternalCallNotifier getExternalCallNotifier() {
