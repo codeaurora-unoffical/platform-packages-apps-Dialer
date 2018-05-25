@@ -1224,6 +1224,11 @@ public class VideoCallPresenter
     updateRemoteVideoSurfaceDimensions();
     mVideoCallScreen.showVideoViews(showOutgoingVideo && !shallTransmitStaticImage() &&
         !QtiCallUtils.hasVideoCrbtVoLteCall(mContext), showIncomingVideo, isRemotelyHeld);
+
+    if (showOutgoingVideo) {
+      maybeHidePreview(mPrimaryCall, videoState);
+    }
+
     if (BottomSheetHelper.getInstance().canDisablePipMode() && mPictureModeHelper != null) {
       mPictureModeHelper.setPreviewVideoLayoutParams();
     }
@@ -1755,5 +1760,18 @@ public class VideoCallPresenter
         break;
     }
     LogUtil.i("VideoCallPresenter.onCallSessionEvent", sb.toString());
+  }
+
+  /**
+  * Hide preview window if it is a VT conference call
+  */
+  private void maybeHidePreview(DialerCall call, int videoState) {
+    if (QtiImsExtUtils.shallHidePreviewInVtConference(
+            BottomSheetHelper.getInstance().getPhoneId(),mContext)) {
+      boolean isConf = (mPrimaryCall != null ? mPrimaryCall.isConferenceCall() : false);
+      boolean hidePreview = VideoProfile.isBidirectional(videoState) && isConf;
+      Log.v(this, "showVideoUi, hidePreview = " + hidePreview);
+      mVideoCallScreen.showOutgoingVideoView(!hidePreview);
+    }
   }
 }

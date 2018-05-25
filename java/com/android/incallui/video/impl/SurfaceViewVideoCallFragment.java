@@ -642,6 +642,10 @@ public class SurfaceViewVideoCallFragment extends Fragment
   }
 
   @Override
+  public void showOutgoingVideoView(boolean show) {
+  }
+
+  @Override
   public void onLocalVideoDimensionsChanged() {
     LogUtil.i("SurfaceViewVideoCallFragment.onLocalVideoDimensionsChanged", null);
   }

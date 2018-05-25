@@ -1584,5 +1584,12 @@ public class VideoCallFragment extends Fragment
     }
   }
 
+  @Override
+  public void showOutgoingVideoView(boolean show) {
+      if (previewTextureView != null) {
+        previewTextureView.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+      }
+  }
+
 }
 // LINT.ThenChange(//depot/google3/third_party/java_src/android_app/dialer/java/com/android/incallui/video/impl/SurfaceViewVideoCallFragment.java)

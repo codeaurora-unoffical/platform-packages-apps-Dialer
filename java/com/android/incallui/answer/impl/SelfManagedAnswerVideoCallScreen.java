@@ -110,6 +110,10 @@ public class SelfManagedAnswerVideoCallScreen extends StateCallback implements V
   }
 
   @Override
+  public void showOutgoingVideoView(boolean show) {
+  }
+
+  @Override
   public String getCallId() {
     return callId;
   }
