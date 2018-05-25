@@ -204,4 +204,10 @@
     <string name="low_battery_msg">Your battery level is below 15%. Do you want to continue with the video call or convert it to Voice call</string>
     <!-- No option of the low battery alert dialog for MO/MT Video calls -->
     <string name="low_battery_convert">Convert</string>
+
+    <!-- VoWifi call quality indicators -->
+    <string name="vowifi_call_quality_good">Good Voice quality</string>
+    <string name="vowifi_call_quality_fair">Fair Voice quality</string>
+    <string name="vowifi_call_quality_poor">Poor Voice quality</string>
+
 </resources>

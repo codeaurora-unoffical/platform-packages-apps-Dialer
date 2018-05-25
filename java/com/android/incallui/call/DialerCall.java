@@ -83,6 +83,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import org.codeaurora.ims.QtiCallConstants;
 import org.codeaurora.ims.utils.QtiImsExtUtils;
 
 /** Describes a single call and its state. */
@@ -1610,4 +1611,12 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
   public interface CannedTextResponsesLoadedListener {
     void onCannedTextResponsesLoaded(DialerCall call);
   }
+
+  public int getWifiQuality() {
+    Bundle extras = getExtras();
+    return (extras == null)? QtiCallConstants.VOWIFI_QUALITY_NONE :
+            extras.getInt(QtiCallConstants.VOWIFI_CALL_QUALITY_EXTRA_KEY,
+                    QtiCallConstants.VOWIFI_QUALITY_NONE);
+  }
+
 }
