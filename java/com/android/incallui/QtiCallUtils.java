@@ -397,7 +397,7 @@ public class QtiCallUtils {
      */
     public static boolean useExt(Context context) {
         if (context == null) {
-            Log.w(context, "Context is null...");
+            Log.w(LOG_TAG, "Context is null...");
         }
         int phoneId = BottomSheetHelper.getInstance().getPhoneId();
         return QtiImsExtUtils.useExt(phoneId, context);
@@ -487,7 +487,11 @@ public class QtiCallUtils {
      * Displays the string corresponding to the resourceId as a Toast on the UI
      */
     public static void displayToast(Context context, int resourceId) {
-      displayToast(context, context.getResources().getString(resourceId));
+        if (context == null) {
+            Log.w(LOG_TAG, "displayToast: context is null");
+            return;
+        }
+        displayToast(context, context.getResources().getString(resourceId));
     }
 
     /**
