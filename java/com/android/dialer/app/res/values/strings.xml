@@ -979,4 +979,7 @@
 
     <string name="speed_dial_ok">OK</string>
 
+    <!-- Call Settings -->
+    <string name="call_settings_lbl">Call Settings</string>
+
 </resources>
