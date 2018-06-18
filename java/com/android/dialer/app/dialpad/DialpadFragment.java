@@ -98,6 +98,7 @@ import com.android.dialer.util.PermissionsUtil;
 import com.android.incallui.QtiCallUtils;
 import java.util.HashSet;
 import java.util.List;
+import org.codeaurora.ims.utils.QtiImsExtUtils;
 
 /** Fragment that displays a twelve-key phone dialpad. */
 public class DialpadFragment extends Fragment
@@ -995,6 +996,13 @@ public class DialpadFragment extends Fragment
       case R.id.nine:
 
         if (mDigits.length() == 1) {
+          boolean isCarrierOneSupported = QtiImsExtUtils.isCarrierOneSupported();
+          if (isCarrierOneSupported &&
+                 (getNumberfromId(id) == getResources().getInteger(
+                 R.integer.speed_dial_emergency_number_assigned_key))) {
+            placeEmergencyCall();
+            return true;
+          }
           final boolean isAirplaneModeOn =
               Settings.System.getInt(getActivity().getContentResolver(),
               Settings.System.AIRPLANE_MODE_ON, 0) != 0;
@@ -1793,4 +1801,32 @@ public class DialpadFragment extends Fragment
         .setNegativeButton(R.string.no, null)
         .show();
   }
+
+  private int getNumberfromId(int id) {
+    int number = -1;
+    switch(id) {
+        case R.id.zero: number = 0; break;
+        case R.id.one: number = 1; break;
+        case R.id.two: number = 2; break;
+        case R.id.three: number = 3; break;
+        case R.id.four: number = 4; break;
+        case R.id.five: number = 5; break;
+        case R.id.six: number = 6; break;
+        case R.id.seven: number = 7; break;
+        case R.id.eight: number = 8; break;
+        case R.id.nine: number = 9; break;
+    }
+    return number;
+  }
+
+  private void placeEmergencyCall() {
+    Resources resources = getResources();
+    String emergencyNumber = resources.getString(
+            R.string.emergency_number);
+    Intent intent = new Intent(Intent.ACTION_CALL_EMERGENCY);
+    intent.setData(Uri.fromParts("tel", emergencyNumber, null));
+    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    startActivity(intent);
+  }
+
 }

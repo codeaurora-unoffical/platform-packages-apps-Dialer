@@ -34,4 +34,8 @@
        Ignored if empty. -->
   <string name="config_prohibited_phone_number_regexp"></string>
 
+  <!-- Speed dial emergency key set to 9, hence we can't set speed dial numbers to key 9 -->
+  <integer name="speed_dial_emergency_number_assigned_key">9</integer>
+  <string name="emergency_number">112</string>
+
 </resources>

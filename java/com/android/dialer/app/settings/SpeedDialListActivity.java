@@ -64,6 +64,7 @@ import android.widget.ListView;
 import android.widget.PopupMenu;
 import android.widget.QuickContactBadge;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.contacts.common.ContactPhotoManager;
 import com.android.contacts.common.ContactPhotoManager.DefaultImageRequest;
@@ -71,6 +72,7 @@ import com.android.dialer.app.R;
 import com.google.common.base.FinalizablePhantomReference;
 
 import java.util.List;
+import org.codeaurora.ims.utils.QtiImsExtUtils;
 
 public class SpeedDialListActivity extends ListActivity implements
         AdapterView.OnItemClickListener, PopupMenu.OnMenuItemClickListener {
@@ -140,6 +142,9 @@ public class SpeedDialListActivity extends ListActivity implements
 
     private SubscriptionManager mSubscriptionManager;
 
+    private boolean mEmergencyCallSpeedDial;
+    private int mSpeedDialKeyforEmergncyCall;
+
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -171,6 +176,11 @@ public class SpeedDialListActivity extends ListActivity implements
             (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         TelecomManager mTelecomManager =
             (TelecomManager) getSystemService(TelecomManager.class);
+
+        mEmergencyCallSpeedDial = QtiImsExtUtils.isCarrierOneSupported();
+        mSpeedDialKeyforEmergncyCall = getResources().getInteger(
+                R.integer.speed_dial_emergency_number_assigned_key);
+
     }
 
     @Override
@@ -357,7 +367,11 @@ public class SpeedDialListActivity extends ListActivity implements
             int number = position + 1;
             mItemPosition = number;
             final Record record = mRecords.get(number);
-            if (record == null) {
+            if (mEmergencyCallSpeedDial && (mItemPosition == mSpeedDialKeyforEmergncyCall)) {
+                Toast.makeText(SpeedDialListActivity.this, R.string.speed_dial_can_not_be_set,
+                        Toast.LENGTH_SHORT).show();
+                return;
+            } else if (record == null) {
                 showAddSpeedDialDialog(number);
             } else {
                 PopupMenu pm = new PopupMenu(this, view, Gravity.START);
