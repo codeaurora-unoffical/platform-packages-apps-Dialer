@@ -143,9 +143,6 @@ public class NotificationBroadcastReceiver extends BroadcastReceiver {
               onAnswerIncomingCall(call, videoState)) {
         call.answer(videoState);
       }
-
-      InCallPresenter.getInstance()
-                    .showInCall(false /* showDialpad */, false /* newOutgoingCall */);
     }
   }
 
