@@ -531,13 +531,8 @@ public class VideoCallPresenter
     if (mPrimaryCall != null) {
       maybeUnsetPauseImage();
       updateCameraSelection(mPrimaryCall);
-
-      // Enable screen time-out for audio calls and for held video calls
-      InCallPresenter.getInstance().enableScreenTimeout(!(isVideoCall(mPrimaryCall) &&
-              mPrimaryCall.getState() != DialerCall.State.ONHOLD));
-    } else {
-      InCallPresenter.getInstance().enableScreenTimeout(true);
     }
+    InCallPresenter.getInstance().enableScreenTimeout(true);
 
     mVideoCallScreen = null;
     isVideoCallScreenUiReady = false;
@@ -1229,6 +1224,11 @@ public class VideoCallPresenter
     updateRemoteVideoSurfaceDimensions();
     mVideoCallScreen.showVideoViews(showOutgoingVideo && !shallTransmitStaticImage() &&
         !QtiCallUtils.hasVideoCrbtVoLteCall(mContext), showIncomingVideo, isRemotelyHeld);
+
+    if (showOutgoingVideo) {
+      maybeHidePreview(mPrimaryCall, videoState);
+    }
+
     if (BottomSheetHelper.getInstance().canDisablePipMode() && mPictureModeHelper != null) {
       mPictureModeHelper.setPreviewVideoLayoutParams();
     }
@@ -1760,5 +1760,18 @@ public class VideoCallPresenter
         break;
     }
     LogUtil.i("VideoCallPresenter.onCallSessionEvent", sb.toString());
+  }
+
+  /**
+  * Hide preview window if it is a VT conference call
+  */
+  private void maybeHidePreview(DialerCall call, int videoState) {
+    if (QtiImsExtUtils.shallHidePreviewInVtConference(
+            BottomSheetHelper.getInstance().getPhoneId(),mContext)) {
+      boolean isConf = (mPrimaryCall != null ? mPrimaryCall.isConferenceCall() : false);
+      boolean hidePreview = VideoProfile.isBidirectional(videoState) && isConf;
+      Log.v(this, "showVideoUi, hidePreview = " + hidePreview);
+      mVideoCallScreen.showOutgoingVideoView(!hidePreview);
+    }
   }
 }

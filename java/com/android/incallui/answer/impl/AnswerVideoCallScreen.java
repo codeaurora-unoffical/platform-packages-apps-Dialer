@@ -107,6 +107,10 @@ public class AnswerVideoCallScreen implements VideoCallScreen {
   public void onRequestReadStoragePermission() {
   }
 
+  @Override
+  public void showOutgoingVideoView(boolean show) {
+  }
+
   @NonNull
   @Override
   public String getCallId() {

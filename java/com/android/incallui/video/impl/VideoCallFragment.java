@@ -854,6 +854,11 @@ public class VideoCallFragment extends Fragment
     // Once complete, set bitmap/pause image.
     @Override
     protected void onPostExecute(Bitmap bitmap) {
+      if (getActivity() == null) {
+        LogUtil.w("VideoCallFragment.onPostExecute", "not attached to activity");
+        return;
+      }
+
       boolean useDefaultImage = bitmap == null;
       LogUtil.d("VideoCallFragment.onPostExecute", "bitmap = " + bitmap);
       videoCallScreenDelegate.setUseDefaultImage(useDefaultImage);
@@ -1577,6 +1582,13 @@ public class VideoCallFragment extends Fragment
         videoCallScreenDelegate.onCameraPermissionGranted();
       }
     }
+  }
+
+  @Override
+  public void showOutgoingVideoView(boolean show) {
+      if (previewTextureView != null) {
+        previewTextureView.setVisibility(show ? View.VISIBLE : View.INVISIBLE);
+      }
   }
 
 }

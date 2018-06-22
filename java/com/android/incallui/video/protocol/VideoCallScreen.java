@@ -27,6 +27,8 @@ public interface VideoCallScreen {
 
   void showVideoViews(boolean shouldShowPreview, boolean shouldShowRemote, boolean isRemotelyHeld);
 
+  void showOutgoingVideoView(boolean show);
+
   void onLocalVideoDimensionsChanged();
 
   void onLocalVideoOrientationChanged();
