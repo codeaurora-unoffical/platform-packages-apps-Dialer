@@ -201,6 +201,9 @@ public class QtiCallUtils {
         if (!PermissionsUtil.hasPhonePermissions(context) || hasConferenceCall()) {
             return false;
         }
+        if (QtiImsExtUtils.isCarrierOneSupported()) {
+            return false;
+        }
         int unregisteredSpecificImsPhoneCount = 0;
         TelephonyManager telephonyManager =
                 (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
