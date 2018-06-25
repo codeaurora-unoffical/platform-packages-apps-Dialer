@@ -336,6 +336,10 @@ public class BottomSheetHelper implements InCallPresenter.InCallEventListener,
    }
 
    public boolean shallShowMoreButton(Activity activity) {
+     if (moreOptionsMap != null && !moreOptionsMap.containsValue(true)) {
+       LogUtil.w("BottomSheetHelper shallShowMoreButton","no options to display");
+       return false;
+     }
      if (mPrimaryCallTracker != null) {
        DialerCall call = mPrimaryCallTracker.getPrimaryCall();
        if (call != null && activity != null) {
