@@ -376,6 +376,7 @@ public class InCallPresenter implements CallList.Listener {
     InCallVideoCallCallbackNotifier.getInstance().setUp();
     InCallCsRedialHandler.getInstance().setUp(mContext);
     InCallUiStateNotifier.getInstance().setUp(context);
+    SessionModificationCauseNotifier.getInstance().setUp(context);
     VideoPauseController.getInstance().setUp(this);
     InCallLowBatteryListener.getInstance().setUp(mContext);
 
