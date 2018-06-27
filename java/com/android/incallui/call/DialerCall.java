@@ -65,7 +65,6 @@ import com.android.dialer.logging.DialerImpression;
 import com.android.dialer.logging.Logger;
 import com.android.dialer.theme.R;
 import com.android.incallui.audiomode.AudioModeProvider;
-import com.android.incallui.InCallPresenter;
 import com.android.incallui.latencyreport.LatencyReport;
 import com.android.incallui.QtiCallUtils;
 import com.android.incallui.util.TelecomCallUtil;
@@ -81,8 +80,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
@@ -110,8 +107,6 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
       "emergency_callback_window_millis";
   private static int sIdCounter = 0;
 
-  private static final String KEY_CARRIER_PARSE_NUMBER_ON_FORWARD_CALL_BOOL
-      = "carrier_parse_number_on_forward_call_bool";
   /**
    * A counter used to append to restricted/private/hidden calls so that users can identify them in
    * a conversation. This value is reset in {@link CallList#onCallRemoved(Context, Call)} when there
@@ -572,23 +567,6 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
     }
   }
 
-  private String parsePhoneNumbers(String fwNumber) {
-      if (fwNumber == null) {
-          LogUtil.v("DialerCall.parsePhoneNumbers", "parsePhoneNumbers: fwNumber is null.");
-          return "";
-      }
-      String parsedNumber = "";
-      final Pattern p = Pattern.compile("(.*?)(\\+?\\d+)((?s).*)");
-      final Matcher m = p.matcher(fwNumber);
-      if (m.matches() ) {
-          parsedNumber = m.group(2);
-      } else {
-          LogUtil.v("DialerCall.parsePhoneNumbers",
-                  "parsePhoneNumbers: string format incorrect" + fwNumber);
-      }
-      return parsedNumber;
-  }
-
   protected void updateFromCallExtras(Bundle callExtras) {
     if (callExtras == null || areCallExtrasCorrupted(callExtras)) {
       /**
@@ -611,9 +589,6 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
     // Last forwarded number comes in as an array of strings.  We want to choose the
     // last item in the array.  The forwarding numbers arrive independently of when the
     // call is originally set up, so we need to notify the the UI of the change.
-    int subId = getSubId();
-    boolean needNumberParsed = InCallPresenter.getInstance().getConfigItem(
-            subId, KEY_CARRIER_PARSE_NUMBER_ON_FORWARD_CALL_BOOL);
     if (callExtras.containsKey(Connection.EXTRA_LAST_FORWARDED_NUMBER)) {
       ArrayList<String> lastForwardedNumbers =
           callExtras.getStringArrayList(Connection.EXTRA_LAST_FORWARDED_NUMBER);
@@ -622,14 +597,6 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
         String lastForwardedNumber = null;
         if (!lastForwardedNumbers.isEmpty()) {
           lastForwardedNumber = lastForwardedNumbers.get(lastForwardedNumbers.size() - 1);
-          LogUtil.v("DialerCall.updateFromCallExtras",
-                  "Before parsing: lastForwardedNumber" + lastForwardedNumber);
-        }
-        lastForwardedNumber = needNumberParsed ?
-            parsePhoneNumbers(lastForwardedNumber) : lastForwardedNumber;
-        if (needNumberParsed) {
-            LogUtil.v("DialerCall.updateFromCallExtras",
-                    "After parsing: lastForwardedNumber" + lastForwardedNumber);
         }
 
         if (!Objects.equals(lastForwardedNumber, mLastForwardedNumber)) {
@@ -871,22 +838,6 @@ public class DialerCall implements VideoTechListener, StateChangedListener, Capa
   @Nullable
   public PhoneAccountHandle getAccountHandle() {
     return mTelecomCall == null ? null : mTelecomCall.getDetails().getAccountHandle();
-  }
-
-  public int getSubId() {
-      PhoneAccountHandle ph = getAccountHandle();
-      if (ph != null) {
-          try {
-              if (ph.getId() != null) {
-                  return Integer.parseInt(getAccountHandle().getId());
-              }
-          } catch (NumberFormatException e) {
-              LogUtil.v("DialerCall.getSubId", "sub id is not a number" + e);
-          }
-          return SubscriptionManager.getDefaultVoiceSubscriptionId();
-      } else {
-          return SubscriptionManager.INVALID_SUBSCRIPTION_ID;
-      }
   }
 
   /** @return The {@link VideoCall} instance associated with the {@link Call}. */
