@@ -21,6 +21,8 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
+import android.graphics.PorterDuff;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.provider.CallLog;
@@ -71,6 +73,7 @@ import com.android.dialer.calldetails.CallDetailsEntries;
 import com.android.dialer.callintent.CallIntentBuilder;
 import com.android.dialer.common.Assert;
 import com.android.dialer.common.LogUtil;
+import com.android.dialer.compat.AppCompatConstants;
 import com.android.dialer.compat.CompatUtils;
 import com.android.dialer.configprovider.ConfigProviderBindings;
 import com.android.dialer.dialercontact.DialerContact;
@@ -93,7 +96,7 @@ import com.android.dialer.util.CallUtil;
 import com.android.dialer.util.DialerUtils;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-
+import org.codeaurora.ims.utils.QtiImsExtUtils;
 /**
  * This is an object containing references to views contained by the call log list item. This
  * improves performance by reducing the frequency with which we need to find views by IDs.
@@ -150,6 +153,11 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
   public View sendVoicemailButtonView;
   public ImageView workIconView;
   public ImageView checkBoxView;
+  /**
+   * Whether this row is for a video call or not.
+   */
+  public boolean isVideoCall = false;
+
   /**
    * The row Id for the first call associated with the call log entry. Used as a key for the map
    * used to track which call log entries have the action button section expanded.
@@ -535,13 +543,57 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
         primaryActionButtonView.setContentDescription(
             TextUtils.expandTemplate(
                 mContext.getString(R.string.description_call_action), validNameOrNumber));
-        primaryActionButtonView.setImageResource(R.drawable.quantum_ic_call_vd_theme_24);
+        if (QtiImsExtUtils.isCarrierOneSupported()) {
+          final Drawable imsDrawable = getLteOrWifiDrawable(callType, isVideoCall);
+            if (imsDrawable != null) {
+              primaryActionButtonView.setImageDrawable(imsDrawable);
+              primaryActionButtonView.setColorFilter(mContext.getResources().getColor(
+                  android.R.color.white),
+                  PorterDuff.Mode.MULTIPLY);
+            } else {
+              primaryActionButtonView.setImageResource(R.drawable.ic_call_24dp);
+              primaryActionButtonView.setColorFilter(mContext.getResources().getColor(
+                  R.color.call_log_list_item_primary_action_icon_tint),
+                  PorterDuff.Mode.MULTIPLY);
+            }
+        } else {
+          primaryActionButtonView.setImageResource(R.drawable.quantum_ic_call_vd_theme_24);
+        }
         primaryActionButtonView.setVisibility(View.VISIBLE);
       } else {
         primaryActionButtonView.setTag(null);
         primaryActionButtonView.setVisibility(View.GONE);
       }
     }
+  }
+
+  /**
+   * Returns drawable for Carrier One if it is LTE or WiFi type call.
+   * @param callType The type of call for the current call log entry.
+   * @param isVideoCall Whether current call log entry is video call.
+   */
+  private Drawable getLteOrWifiDrawable(int callType, boolean isVideoCall) {
+    Resources resources = mContext.getResources();
+      switch(callType) {
+        case AppCompatConstants.INCOMING_IMS_TYPE:
+        case AppCompatConstants.OUTGOING_IMS_TYPE:
+        case AppCompatConstants.MISSED_IMS_TYPE:
+          if (isVideoCall) {
+            return resources.getDrawable(R.drawable.vilte);
+          } else {
+            return resources.getDrawable(R.drawable.volte);
+          }
+        case AppCompatConstants.INCOMING_WIFI_TYPE:
+        case AppCompatConstants.OUTGOING_WIFI_TYPE:
+        case AppCompatConstants.MISSED_WIFI_TYPE:
+          if (isVideoCall) {
+            return resources.getDrawable(R.drawable.viwifi);
+          } else {
+            return resources.getDrawable(R.drawable.vowifi);
+          }
+        default:
+          return null;
+      }
   }
 
   /**

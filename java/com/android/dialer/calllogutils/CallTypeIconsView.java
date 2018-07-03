@@ -29,6 +29,7 @@ import android.view.View;
 import com.android.dialer.compat.AppCompatConstants;
 import java.util.ArrayList;
 import java.util.List;
+import org.codeaurora.ims.utils.QtiImsExtUtils;
 
 /**
  * View that draws one or more symbols for different types of calls (missed calls, outgoing etc).
@@ -41,7 +42,7 @@ import java.util.List;
 public class CallTypeIconsView extends View {
 
   private final boolean useLargeIcons;
-
+  private static boolean mIsCarrierOneSupported = false;
   private static Resources sResources;
   private static Resources sLargeResouces;
   private List<Integer> mCallTypes = new ArrayList<>(3);
@@ -57,6 +58,7 @@ public class CallTypeIconsView extends View {
 
   public CallTypeIconsView(Context context, AttributeSet attrs) {
     super(context, attrs);
+    mIsCarrierOneSupported = QtiImsExtUtils.isCarrierOneSupported();
     TypedArray typedArray =
         context.getTheme().obtainStyledAttributes(attrs, R.styleable.CallTypeIconsView, 0, 0);
     useLargeIcons = typedArray.getBoolean(R.styleable.CallTypeIconsView_useLargeIcons, false);
@@ -85,6 +87,19 @@ public class CallTypeIconsView extends View {
     invalidate();
   }
 
+  public void addImsIcon(int callType, boolean showVideo) {
+    mShowVideo = showVideo;
+    final Drawable drawable = getLteOrWifiDrawable(callType, showVideo);
+    if (drawable != null) {
+      // calculating drawable's width and adding it to total width for correct position
+      // of icon.
+      // calculating height by max of drawable height and other icons' height.
+      mWidth += drawable.getIntrinsicWidth();
+      mHeight = Math.max(mHeight, drawable.getIntrinsicHeight());
+      invalidate();
+    }
+  }
+
   /**
    * Determines whether the video call icon will be shown.
    *
@@ -92,10 +107,39 @@ public class CallTypeIconsView extends View {
    */
   public void setShowVideo(boolean showVideo) {
     mShowVideo = showVideo;
+    if (mIsCarrierOneSupported) {
+      //  Don't show video icon in call log item. For CarrierOne, show more precise icon
+      //  based on call type in call detail history.
+      return;
+    }
+
     if (showVideo) {
       mWidth += sResources.videoCall.getIntrinsicWidth() + sResources.iconMargin;
       mHeight = Math.max(mHeight, sResources.videoCall.getIntrinsicHeight());
       invalidate();
+    }
+  }
+
+  private Drawable getLteOrWifiDrawable(int callType, boolean showVideo) {
+    switch(callType) {
+      case AppCompatConstants.INCOMING_IMS_TYPE:
+      case AppCompatConstants.OUTGOING_IMS_TYPE:
+      case AppCompatConstants.MISSED_IMS_TYPE:
+        if (showVideo) {
+          return sResources.vilteCall;
+        } else {
+          return sResources.volteCall;
+        }
+      case AppCompatConstants.INCOMING_WIFI_TYPE:
+      case AppCompatConstants.OUTGOING_WIFI_TYPE:
+      case AppCompatConstants.MISSED_WIFI_TYPE:
+        if (showVideo) {
+          return sResources.viwifiCall;
+        } else {
+          return sResources.vowifiCall;
+        }
+      default:
+        return  sResources.defaultCall;
     }
   }
 
@@ -140,12 +184,15 @@ public class CallTypeIconsView extends View {
       case AppCompatConstants.CALLS_INCOMING_TYPE:
       case AppCompatConstants.INCOMING_IMS_TYPE:
       case AppCompatConstants.CALLS_ANSWERED_EXTERNALLY_TYPE:
+      case AppCompatConstants.INCOMING_WIFI_TYPE:
         return resources.incoming;
       case AppCompatConstants.CALLS_OUTGOING_TYPE:
       case AppCompatConstants.OUTGOING_IMS_TYPE:
+      case AppCompatConstants.OUTGOING_WIFI_TYPE:
         return resources.outgoing;
       case AppCompatConstants.CALLS_MISSED_TYPE:
       case AppCompatConstants.MISSED_IMS_TYPE:
+      case AppCompatConstants.MISSED_WIFI_TYPE:
         return resources.missed;
       case AppCompatConstants.CALLS_VOICEMAIL_TYPE:
         return resources.voicemail;
@@ -171,7 +218,7 @@ public class CallTypeIconsView extends View {
     int left = 0;
     // If we are using large icons, we should only show one icon (video, hd or call type) with
     // priority give to HD or Video. So we skip the call type icon if we plan to show them.
-    if (!useLargeIcons || !(mShowHd || mShowVideo || mShowWifi)) {
+    if (!mIsCarrierOneSupported && (!useLargeIcons || !(mShowHd || mShowVideo || mShowWifi))) {
       for (Integer callType : mCallTypes) {
         final Drawable drawable = getCallTypeDrawable(callType);
         final int right = left + drawable.getIntrinsicWidth();
@@ -182,7 +229,7 @@ public class CallTypeIconsView extends View {
     }
 
     // If showing the video call icon, draw it scaled appropriately.
-    if (mShowVideo) {
+    if (!mIsCarrierOneSupported && mShowVideo) {
       left = addDrawable(canvas, resources.videoCall, left) + resources.iconMargin;
     }
     // If showing HD call icon, draw it scaled appropriately.
@@ -192,6 +239,23 @@ public class CallTypeIconsView extends View {
     // If showing HD call icon, draw it scaled appropriately.
     if (mShowWifi) {
       left = addDrawable(canvas, resources.wifiCall, left) + resources.iconMargin;
+    }
+    if (mIsCarrierOneSupported){
+      for (Integer callType : mCallTypes) {
+        final Drawable drawable = getCallTypeDrawable(callType);
+        final int right = left + drawable.getIntrinsicWidth();
+        drawable.setBounds(left, 0, right, drawable.getIntrinsicHeight());
+        drawable.draw(canvas);
+        left = right + resources.iconMargin;
+      }
+      for (Integer callType : mCallTypes) {
+        final Drawable drawableIms = getLteOrWifiDrawable(callType, mShowVideo);
+        if (drawableIms != null) {
+          final int right = left + drawableIms.getIntrinsicWidth();
+          drawableIms.setBounds(left, 0, right, drawableIms.getIntrinsicHeight());
+          drawableIms.draw(canvas);
+        }
+      }
     }
   }
 
@@ -230,6 +294,32 @@ public class CallTypeIconsView extends View {
 
     /** The margin to use for icons. */
     final int iconMargin;
+
+    /**
+     * Drawable representing a VoWiFi call.
+     */
+    final Drawable vowifiCall;
+
+    /**
+     * Drawable representing a ViWiFi call.
+     */
+    final Drawable viwifiCall;
+
+    /**
+     * Drawable representing a VoLTE call.
+     */
+    final Drawable volteCall;
+
+    /**
+     * Drawable representing a ViLTE call.
+     */
+    final Drawable vilteCall;
+
+    /**
+     * Drawable representing a default call when carrier componet will enable.
+     */
+    final Drawable defaultCall;
+
 
     /**
      * Configures the call icon drawables. A single white call arrow which points down and left is
@@ -288,8 +378,12 @@ public class CallTypeIconsView extends View {
       wifiCall.setColorFilter(r.getColor(R.color.call_type_icon_color), PorterDuff.Mode.MULTIPLY);
 
       iconMargin = largeIcons ? 0 : r.getDimensionPixelSize(R.dimen.call_log_icon_margin);
-    }
-
+      viwifiCall = r.getDrawable(R.drawable.viwifi);
+      vowifiCall = r.getDrawable(R.drawable.vowifi);
+      volteCall = r.getDrawable(R.drawable.volte);
+      vilteCall = r.getDrawable(R.drawable.vilte);
+      defaultCall = r.getDrawable(R.drawable.ic_call);
+  }
     // Gets the icon, scaled to the height of the call type icons. This helps display all the
     // icons to be the same height, while preserving their width aspect ratio.
     private Drawable getScaledBitmap(Context context, int resourceId) {
