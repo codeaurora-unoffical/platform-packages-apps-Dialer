@@ -963,6 +963,8 @@ public class CallLogAdapter extends GroupingListAdapter
     views.rowId = cursor.getLong(CallLogQuery.ID);
     // Stash away the Ids of the calls so that we can support deleting a row in the call log.
     views.callIds = getCallIds(cursor, count);
+    views.isVideoCall = (cursor.getInt(CallLogQuery.FEATURES) & CallLog.Calls.FEATURES_VIDEO) ==
+        CallLog.Calls.FEATURES_VIDEO;
     details.previousGroup = getPreviousDayGroup(cursor);
 
     // Store values used when the actions ViewStub is inflated on expansion.

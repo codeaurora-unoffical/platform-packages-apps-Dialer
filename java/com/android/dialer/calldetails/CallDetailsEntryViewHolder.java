@@ -110,10 +110,17 @@ public class CallDetailsEntryViewHolder extends ViewHolder {
     callTypeIcon.clear();
     callTypeIcon.add(callType);
     callTypeIcon.setShowVideo(isVideoCall);
-    callTypeIcon.setShowHd(MotorolaUtils.shouldShowHdIconInCallLog(context, entry.getFeatures()));
-    callTypeIcon.setShowWifi(
-        MotorolaUtils.shouldShowWifiIconInCallLog(context, entry.getFeatures()));
-
+    /*
+     * Ims icon(VoLTE/VoWiFi/ViLTE/ViWiFi) will be shown if carrierOne is supported
+     * otherwise, default video icon will be shown if it is a video call.
+     */
+    if (QtiImsExtUtils.isCarrierOneSupported()) {
+      callTypeIcon.addImsIcon(callType, isVideoCall);
+    } else {
+      callTypeIcon.setShowHd(MotorolaUtils.shouldShowHdIconInCallLog(context, entry.getFeatures()));
+      callTypeIcon.setShowWifi(
+          MotorolaUtils.shouldShowWifiIconInCallLog(context, entry.getFeatures()));
+    }
     callTypeText.setText(callTypeHelper.getCallTypeText(callType, isVideoCall, isPulledCall));
     callTime.setText(CallEntryFormatter.formatDate(context, entry.getDate()));
     if (CallTypeHelper.isMissedCallType(callType) || is4GConferenceEnabledSub) {
