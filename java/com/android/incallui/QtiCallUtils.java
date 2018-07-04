@@ -503,6 +503,19 @@ public class QtiCallUtils {
     public static void displayToast(Context context, String msg) {
       Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
     }
+    /**
+     * Displays the message as a long Toast on the UI
+    */
+    public static void displayLongToast(Context context, String msg) {
+      Toast.makeText(context, msg, Toast.LENGTH_LONG).show();
+    }
+
+    /**
+     * Displays the string corresponding to the resourceId as a long Toast on the UI
+     */
+    public static void displayLongToast(Context context, int resourceId) {
+      displayLongToast(context, context.getResources().getString(resourceId));
+    }
 
     public static CharSequence getLabelForIncomingWifiVideoCall(Context context) {
         final DialerCall call = getIncomingOrActiveCall();
