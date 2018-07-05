@@ -42,6 +42,8 @@ import com.android.voicemail.VoicemailClient;
 import com.android.voicemail.VoicemailComponent;
 import java.util.List;
 
+import org.codeaurora.ims.utils.QtiImsExtUtils;
+
 /** Activity for dialer settings. */
 @SuppressWarnings("FragmentInjection") // Activity not exported
 @UsedByReflection(value = "AndroidManifest-app.xml")
@@ -49,7 +51,7 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
 
   protected SharedPreferences mPreferences;
   private boolean migrationStatusOnBuildHeaders;
-
+  private final String ACTION_LAUNCH_CALL_SETTINGS = "org.codeaurora.CALL_SETTINGS";
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -90,13 +92,15 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
     quickResponseSettingsHeader.intent = quickResponseSettingsIntent;
     target.add(quickResponseSettingsHeader);
 
-    Header speedDialSettingsHeader = new Header();
-    Intent speedDialSettingsIntent = new Intent(this, SpeedDialListActivity.class);
-    speedDialSettingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    if (!QtiImsExtUtils.isCarrierOneSupported()) {
+      Header speedDialSettingsHeader = new Header();
+      Intent speedDialSettingsIntent = new Intent(this, SpeedDialListActivity.class);
+      speedDialSettingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-    speedDialSettingsHeader.titleRes = R.string.speed_dial_settings;
-    speedDialSettingsHeader.intent = speedDialSettingsIntent;
-    target.add(speedDialSettingsHeader);
+      speedDialSettingsHeader.titleRes = R.string.speed_dial_settings;
+      speedDialSettingsHeader.intent = speedDialSettingsIntent;
+      target.add(speedDialSettingsHeader);
+    }
 
     TelephonyManager telephonyManager =
         (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
@@ -106,22 +110,36 @@ public class DialerSettingsActivity extends AppCompatPreferenceActivity {
     // primary user and there are multiple SIMs. In N+, "Calling accounts" is shown whenever
     // "Call Settings" is not shown.
     boolean isPrimaryUser = isPrimaryUser();
-    if (isPrimaryUser && TelephonyManagerCompat.getPhoneCount(telephonyManager) <= 1) {
-      Header callSettingsHeader = new Header();
-      Intent callSettingsIntent = new Intent(TelecomManager.ACTION_SHOW_CALL_SETTINGS);
-      callSettingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-      callSettingsHeader.titleRes = R.string.call_settings_label;
-      callSettingsHeader.intent = callSettingsIntent;
-      target.add(callSettingsHeader);
-    } else if ((VERSION.SDK_INT >= VERSION_CODES.N) || isPrimaryUser) {
-      Header phoneAccountSettingsHeader = new Header();
-      Intent phoneAccountSettingsIntent = new Intent(TelecomManager.ACTION_CHANGE_PHONE_ACCOUNTS);
-      phoneAccountSettingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    if (QtiImsExtUtils.isCarrierOneSupported()) {
+      if (isPrimaryUser) {
+        Header callSettingsHeader =  new Header();
+        Intent callSettingsIntent = new Intent(ACTION_LAUNCH_CALL_SETTINGS);
+        callSettingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-      phoneAccountSettingsHeader.titleRes = R.string.phone_account_settings_label;
-      phoneAccountSettingsHeader.intent = phoneAccountSettingsIntent;
-      target.add(phoneAccountSettingsHeader);
+        callSettingsHeader.titleRes = R.string.call_settings_lbl;
+        callSettingsHeader.intent = callSettingsIntent;
+        target.add(callSettingsHeader);
+      }
+    } else {
+      if (isPrimaryUser && TelephonyManagerCompat.getPhoneCount(telephonyManager) <= 1) {
+        Header callSettingsHeader = new Header();
+        Intent callSettingsIntent = new Intent(TelecomManager.ACTION_SHOW_CALL_SETTINGS);
+        callSettingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        callSettingsHeader.titleRes = R.string.call_settings_label;
+        callSettingsHeader.intent = callSettingsIntent;
+        target.add(callSettingsHeader);
+      } else if ((VERSION.SDK_INT >= VERSION_CODES.N) || isPrimaryUser) {
+        Header phoneAccountSettingsHeader = new Header();
+        Intent phoneAccountSettingsIntent =
+            new Intent(TelecomManager.ACTION_CHANGE_PHONE_ACCOUNTS);
+        phoneAccountSettingsIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+        phoneAccountSettingsHeader.titleRes = R.string.phone_account_settings_label;
+        phoneAccountSettingsHeader.intent = phoneAccountSettingsIntent;
+        target.add(phoneAccountSettingsHeader);
+      }
     }
     if (FilteredNumberCompat.canCurrentUserOpenBlockSettings(this)) {
       Header blockedCallsHeader = new Header();

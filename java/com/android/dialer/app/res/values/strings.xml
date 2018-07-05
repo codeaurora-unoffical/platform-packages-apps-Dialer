@@ -979,4 +979,10 @@
 
     <string name="speed_dial_ok">OK</string>
 
+    <!-- Call Settings -->
+    <string name="call_settings_lbl">Call Settings</string>
+
+    <!-- Speed Dial can not be set for the key used for Emergency number-->
+    <string name="speed_dial_can_not_be_set">Speed Dial Can not be set for this Key</string>
+
 </resources>

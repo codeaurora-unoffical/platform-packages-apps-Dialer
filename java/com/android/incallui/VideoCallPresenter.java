@@ -551,6 +551,10 @@ public class VideoCallPresenter
    */
   private void onSurfaceClick() {
     LogUtil.i("VideoCallPresenter.onSurfaceClick", "");
+    if (!mIsVideoMode) {
+      Log.d("onSurfaceClick: ","Not in video mode ignoring.");
+      return;
+    }
     cancelAutoFullScreen();
     if (!InCallPresenter.getInstance().isFullscreen()) {
       InCallPresenter.getInstance().setFullScreen(true);
