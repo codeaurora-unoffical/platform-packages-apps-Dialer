@@ -139,7 +139,7 @@ public class SoundSettingsFragment extends PreferenceFragment
       mVibrateWhenRinging.setChecked(shouldVibrateWhenRinging());
     }
 
-    if (QtiImsExtUtils.isCarrierOneSupported()) {
+    if (QtiImsExtUtils.isCarrierOneSupported() && mRingtonePreference != null) {
         getPreferenceScreen().removePreference(mRingtonePreference);
         mRingtonePreference = null;
     }
