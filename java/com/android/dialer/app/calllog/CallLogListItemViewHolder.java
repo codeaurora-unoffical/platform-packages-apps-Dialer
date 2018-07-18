@@ -551,7 +551,7 @@ public final class CallLogListItemViewHolder extends RecyclerView.ViewHolder
                   android.R.color.white),
                   PorterDuff.Mode.MULTIPLY);
             } else {
-              primaryActionButtonView.setImageResource(R.drawable.ic_call_24dp);
+              primaryActionButtonView.setImageResource(R.drawable.ic_call_log);
               primaryActionButtonView.setColorFilter(mContext.getResources().getColor(
                   R.color.call_log_list_item_primary_action_icon_tint),
                   PorterDuff.Mode.MULTIPLY);
