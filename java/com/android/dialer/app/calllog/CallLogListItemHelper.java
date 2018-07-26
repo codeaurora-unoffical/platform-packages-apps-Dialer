@@ -225,12 +225,14 @@ import com.android.dialer.compat.AppCompatConstants;
     int stringID;
 
     if (lastCallType == AppCompatConstants.CALLS_MISSED_TYPE ||
-        lastCallType == AppCompatConstants.MISSED_IMS_TYPE) {
+        lastCallType == AppCompatConstants.MISSED_IMS_TYPE ||
+        lastCallType == AppCompatConstants.MISSED_WIFI_TYPE) {
       //Message: Missed call from <NameOrNumber>, <TypeOrLocation>, <TimeOfCall>,
       //<PhoneAccount>.
       stringID = R.string.description_incoming_missed_call;
     } else if (lastCallType == AppCompatConstants.CALLS_INCOMING_TYPE ||
-        lastCallType == AppCompatConstants.INCOMING_IMS_TYPE) {
+        lastCallType == AppCompatConstants.INCOMING_IMS_TYPE ||
+        lastCallType == AppCompatConstants.INCOMING_WIFI_TYPE) {
       //Message: Answered call from <NameOrNumber>, <TypeOrLocation>, <TimeOfCall>,
       //<PhoneAccount>.
       stringID = R.string.description_incoming_answered_call;

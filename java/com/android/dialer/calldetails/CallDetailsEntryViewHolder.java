@@ -194,15 +194,18 @@ public class CallDetailsEntryViewHolder extends ViewHolder {
     switch (callType) {
       case AppCompatConstants.CALLS_OUTGOING_TYPE:
       case AppCompatConstants.OUTGOING_IMS_TYPE:
+      case AppCompatConstants.OUTGOING_WIFI_TYPE:
       case AppCompatConstants.CALLS_VOICEMAIL_TYPE:
       case AppCompatConstants.CALLS_BLOCKED_TYPE:
       case AppCompatConstants.CALLS_INCOMING_TYPE:
       case AppCompatConstants.INCOMING_IMS_TYPE:
+      case AppCompatConstants.INCOMING_WIFI_TYPE:
       case AppCompatConstants.CALLS_ANSWERED_EXTERNALLY_TYPE:
       case AppCompatConstants.CALLS_REJECTED_TYPE:
         return ContextCompat.getColor(context, R.color.dialer_secondary_text_color);
       case AppCompatConstants.CALLS_MISSED_TYPE:
       case AppCompatConstants.MISSED_IMS_TYPE:
+      case AppCompatConstants.MISSED_WIFI_TYPE:
       default:
         // It is possible for users to end up with calls with unknown call types in their
         // call history, possibly due to 3rd party call log implementations (e.g. to

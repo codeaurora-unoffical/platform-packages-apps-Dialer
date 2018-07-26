@@ -83,6 +83,8 @@ public class CallTypeHelper {
         && callType != AppCompatConstants.CALLS_OUTGOING_TYPE
         && callType != AppCompatConstants.INCOMING_IMS_TYPE
         && callType != AppCompatConstants.OUTGOING_IMS_TYPE
+        && callType != AppCompatConstants.INCOMING_WIFI_TYPE
+        && callType != AppCompatConstants.OUTGOING_WIFI_TYPE
         && callType != AppCompatConstants.CALLS_VOICEMAIL_TYPE
         && callType != AppCompatConstants.CALLS_ANSWERED_EXTERNALLY_TYPE);
   }
@@ -112,6 +114,13 @@ public class CallTypeHelper {
             return mIncomingVoLTEName;
         }
 
+      case AppCompatConstants.INCOMING_WIFI_TYPE:
+        if (isVideoCall) {
+          return mIncomingVideoName;
+        } else {
+          return mIncomingVoLTEName;
+        }
+
       case AppCompatConstants.CALLS_OUTGOING_TYPE:
         if (isVideoCall) {
           if (isPulledCall) {
@@ -134,6 +143,13 @@ public class CallTypeHelper {
           return mOutgoingVoLTEName;
         }
 
+      case AppCompatConstants.OUTGOING_WIFI_TYPE:
+        if (isVideoCall) {
+          return mOutgoingVideoName;
+        } else {
+          return mOutgoingVoLTEName;
+        }
+
       case AppCompatConstants.CALLS_MISSED_TYPE:
         if (isVideoCall) {
           return mMissedVideoName;
@@ -142,6 +158,13 @@ public class CallTypeHelper {
         }
 
       case AppCompatConstants.MISSED_IMS_TYPE:
+        if (isVideoCall) {
+          return mMissedVideoName;
+        } else {
+          return mMissedVoLTEName;
+        }
+
+      case AppCompatConstants.MISSED_WIFI_TYPE:
         if (isVideoCall) {
           return mMissedVideoName;
         } else {

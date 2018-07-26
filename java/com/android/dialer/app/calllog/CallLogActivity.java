@@ -90,7 +90,8 @@ public class CallLogActivity extends TransactionSafeActivity
     if (intent != null) {
       final int callType = intent.getIntExtra(CallLog.Calls.EXTRA_CALL_TYPE_FILTER, -1);
       if (callType == CallLog.Calls.MISSED_TYPE ||
-          callType == AppCompatConstants.MISSED_IMS_TYPE) {
+          callType == AppCompatConstants.MISSED_IMS_TYPE ||
+          callType == AppCompatConstants.MISSED_WIFI_TYPE) {
         startingTab = TAB_INDEX_MISSED;
       }
     }
@@ -213,7 +214,8 @@ public class CallLogActivity extends TransactionSafeActivity
     if (intent != null) {
       final int callType = intent.getIntExtra(CallLog.Calls.EXTRA_CALL_TYPE_FILTER, -1);
       if (callType == CallLog.Calls.MISSED_TYPE ||
-          callType == AppCompatConstants.MISSED_IMS_TYPE) {
+          callType == AppCompatConstants.MISSED_IMS_TYPE ||
+          callType == AppCompatConstants.MISSED_WIFI_TYPE) {
         mMSimCallsFragment.setFilterType(Calls.MISSED_TYPE);
         mTabTitles[0] = getString(R.string.call_log_missed_title);
       }
