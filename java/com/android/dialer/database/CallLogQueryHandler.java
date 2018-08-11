@@ -199,18 +199,21 @@ public class CallLogQueryHandler extends NoNullCursorAsyncQueryHandler {
 
       if ((callType == Calls.INCOMING_TYPE) || (callType == Calls.OUTGOING_TYPE)
               || (callType == Calls.MISSED_TYPE)) {
-        where.append(String.format("(%s = ? OR %s = ?)",
-                Calls.TYPE, Calls.TYPE));
+        where.append(String.format("(%s = ? OR %s = ? OR %s = ?)",
+                Calls.TYPE, Calls.TYPE, Calls.TYPE));
       } else {
         where.append(String.format("(%s = ?)", Calls.TYPE));
       }
       selectionArgs.add(Integer.toString(callType));
       if (callType == Calls.INCOMING_TYPE) {
         selectionArgs.add(Integer.toString(AppCompatConstants.INCOMING_IMS_TYPE));
+        selectionArgs.add(Integer.toString(AppCompatConstants.INCOMING_WIFI_TYPE));
       } else if (callType == Calls.OUTGOING_TYPE) {
         selectionArgs.add(Integer.toString(AppCompatConstants.OUTGOING_IMS_TYPE));
+        selectionArgs.add(Integer.toString(AppCompatConstants.OUTGOING_WIFI_TYPE));
       } else if (callType == Calls.MISSED_TYPE) {
         selectionArgs.add(Integer.toString(AppCompatConstants.MISSED_IMS_TYPE));
+        selectionArgs.add(Integer.toString(AppCompatConstants.MISSED_WIFI_TYPE));
       }
     } else {
       where.append(" AND NOT ");
@@ -373,7 +376,9 @@ public class CallLogQueryHandler extends NoNullCursorAsyncQueryHandler {
     where.append(" AND (");
     where.append(Calls.TYPE).append(" = ").append(Calls.MISSED_TYPE);
     where.append(" OR ");
-    where.append(Calls.TYPE).append(" = ").append(AppCompatConstants.MISSED_IMS_TYPE).append(")");
+    where.append(Calls.TYPE).append(" = ").append(AppCompatConstants.MISSED_IMS_TYPE);
+    where.append(" OR ");
+    where.append(Calls.TYPE).append(" = ").append(AppCompatConstants.MISSED_WIFI_TYPE).append(")");
     return where.toString();
   }
 

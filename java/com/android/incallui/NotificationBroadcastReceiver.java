@@ -139,9 +139,14 @@ public class NotificationBroadcastReceiver extends BroadcastReceiver {
       LogUtil.e("NotificationBroadcastReceiver.answerIncomingCall", "call list is empty");
     } else {
       DialerCall call = callList.getIncomingCall();
-      if (call != null && !InCallLowBatteryListener.getInstance().
-              onAnswerIncomingCall(call, videoState)) {
-        call.answer(videoState);
+      if (call != null) {
+        if (!InCallLowBatteryListener.getInstance().
+                onAnswerIncomingCall(call, videoState)) {
+          call.answer(videoState);
+        } else {
+          InCallPresenter.getInstance().
+                  showInCall(false /* showDialpad */, false /* newOutgoingCall */);
+        }
       }
     }
   }

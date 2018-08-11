@@ -365,7 +365,8 @@ public class CallLogAdapter extends GroupingListAdapter
             mCurrentlyExpandedRowId = NO_EXPANDED_LIST_ITEM;
           } else {
             if (viewHolder.callType == CallLog.Calls.MISSED_TYPE ||
-                viewHolder.callType == AppCompatConstants.MISSED_IMS_TYPE) {
+                viewHolder.callType == AppCompatConstants.MISSED_IMS_TYPE ||
+                viewHolder.callType == AppCompatConstants.MISSED_WIFI_TYPE) {
               CallLogAsyncTaskUtil.markCallAsRead(mActivity, viewHolder.callIds);
               if (mActivityType == ACTIVITY_TYPE_DIALTACTS) {
                 ((DialtactsActivity) v.getContext()).updateTabUnreadCounts();
@@ -975,7 +976,8 @@ public class CallLogAdapter extends GroupingListAdapter
 
     if (details.callTypes[0] == CallLog.Calls.VOICEMAIL_TYPE
         || details.callTypes[0] == CallLog.Calls.MISSED_TYPE
-        || details.callTypes[0] == AppCompatConstants.MISSED_IMS_TYPE) {
+        || details.callTypes[0] == AppCompatConstants.MISSED_IMS_TYPE
+        || details.callTypes[0] == AppCompatConstants.MISSED_WIFI_TYPE) {
       details.isRead = cursor.getInt(CallLogQuery.IS_READ) == 1;
     }
     views.callType = cursor.getInt(CallLogQuery.CALL_TYPE);

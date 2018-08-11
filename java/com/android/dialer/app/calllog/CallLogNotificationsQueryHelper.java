@@ -110,9 +110,10 @@ public class CallLogNotificationsQueryHelper {
     List<String> selectionArgs = new ArrayList<>();
     where.append(Calls.NEW);
     where.append(" = 1 AND ");
-    where.append(String.format("(%s = ? OR %s = ?)",Calls.TYPE, Calls.TYPE));
+    where.append(String.format("(%s = ? OR %s = ? OR %s = ?)",Calls.TYPE, Calls.TYPE, Calls.TYPE));
     selectionArgs.add(Integer.toString(Calls.MISSED_TYPE));
     selectionArgs.add(Integer.toString(AppCompatConstants.MISSED_IMS_TYPE));
+    selectionArgs.add(Integer.toString(AppCompatConstants.MISSED_WIFI_TYPE));
     try {
       context
           .getContentResolver()
@@ -155,6 +156,7 @@ public class CallLogNotificationsQueryHelper {
   public List<NewCall> getNewMissedCalls() {
     List<NewCall> newCalls = mNewCallsQuery.query(Calls.MISSED_TYPE);
     newCalls.addAll(mNewCallsQuery.query(AppCompatConstants.MISSED_IMS_TYPE));
+    newCalls.addAll(mNewCallsQuery.query(AppCompatConstants.MISSED_WIFI_TYPE));
     return newCalls;
   }
 

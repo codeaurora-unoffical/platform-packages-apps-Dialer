@@ -200,8 +200,10 @@ public class PhoneCallDetails {
     for (int i = 0; i < callTypes.length; i++) {
       if (callTypes[i] == CallLog.Calls.INCOMING_TYPE
           || callTypes[i] == AppCompatConstants.INCOMING_IMS_TYPE
+          || callTypes[i] == AppCompatConstants.INCOMING_WIFI_TYPE
           || callTypes[i] == CallLog.Calls.MISSED_TYPE
           || callTypes[i] == AppCompatConstants.MISSED_IMS_TYPE
+          || callTypes[i] == AppCompatConstants.MISSED_WIFI_TYPE
           || callTypes[i] == CallLog.Calls.VOICEMAIL_TYPE
           || callTypes[i] == CallLog.Calls.REJECTED_TYPE
           || callTypes[i] == CallLog.Calls.BLOCKED_TYPE) {

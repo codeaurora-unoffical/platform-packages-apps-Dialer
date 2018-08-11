@@ -131,6 +131,9 @@ public class CallLogAsyncTaskUtil {
             where.append(" OR ")
                 .append(CallLog.Calls.TYPE).append(" = ")
                 .append(AppCompatConstants.MISSED_IMS_TYPE)
+                .append(" OR ")
+                .append(CallLog.Calls.TYPE).append(" = ")
+                .append(AppCompatConstants.MISSED_WIFI_TYPE)
                 .append(")");
             where.append(" AND ");
 
