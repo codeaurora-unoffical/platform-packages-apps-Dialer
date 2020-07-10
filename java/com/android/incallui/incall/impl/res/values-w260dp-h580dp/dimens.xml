@@ -19,4 +19,6 @@
   <dimen name="incall_button_vertical_padding">16dp</dimen>
   <dimen name="incall_labeled_button_size">64dp</dimen>
   <dimen name="tools_button_height">92dp</dimen>
+
+  <integer name="incall_num_rows">2</integer>
 </resources>

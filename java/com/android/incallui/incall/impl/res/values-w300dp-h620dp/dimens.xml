@@ -17,4 +17,6 @@
 
 <resources>
   <dimen name="incall_button_vertical_padding">32dp</dimen>
+
+  <integer name="incall_num_rows">2</integer>
 </resources>
